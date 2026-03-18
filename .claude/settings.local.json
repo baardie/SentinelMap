@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls /c/Users/lukeb/source/repos/SentinelMap/*.sln)",
+      "Bash(dotnet --version)",
+      "Bash(npm --version)",
+      "Bash(docker --version)"
+    ]
+  }
+}

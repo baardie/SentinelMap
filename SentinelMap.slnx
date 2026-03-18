@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SentinelMap.Api/SentinelMap.Api.csproj" />
+    <Project Path="src/SentinelMap.Domain/SentinelMap.Domain.csproj" />
+    <Project Path="src/SentinelMap.Infrastructure/SentinelMap.Infrastructure.csproj" />
+    <Project Path="src/SentinelMap.SharedKernel/SentinelMap.SharedKernel.csproj" />
+    <Project Path="src/SentinelMap.Workers/SentinelMap.Workers.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SentinelMap.Api.Tests/SentinelMap.Api.Tests.csproj" />
+    <Project Path="tests/SentinelMap.Domain.Tests/SentinelMap.Domain.Tests.csproj" />
+    <Project Path="tests/SentinelMap.Infrastructure.Tests/SentinelMap.Infrastructure.Tests.csproj" />
+  </Folder>
+</Solution>
