@@ -1,0 +1,10 @@
+# Development overrides — exposes db and redis ports for local tooling.
+# Production defaults are in docker-compose.yml (no exposed ports).
+services:
+  db:
+    ports:
+      - "5432:5432"
+
+  redis:
+    ports:
+      - "6379:6379"

@@ -1,0 +1,92 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: sentinel
+      POSTGRES_PASSWORD: sentinel_dev_password
+      POSTGRES_DB: sentinelmap
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sentinel -d sentinelmap"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sentinel
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sentinel
+
+  api:
+    build:
+      context: .
+      dockerfile: src/SentinelMap.Api/Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=sentinelmap;Username=sentinel;Password=sentinel_dev_password"
+      ConnectionStrings__Redis: "redis:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - sentinel
+
+  workers:
+    build:
+      context: .
+      dockerfile: src/SentinelMap.Workers/Dockerfile
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=sentinelmap;Username=sentinel;Password=sentinel_dev_password"
+      ConnectionStrings__Redis: "redis:6379"
+      SENTINELMAP_DATA_MODE: "Simulated"
+    networks:
+      - sentinel
+
+  web:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    networks:
+      - sentinel
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - web
+    networks:
+      - sentinel
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
+
+networks:
+  sentinel:
+    driver: bridge
