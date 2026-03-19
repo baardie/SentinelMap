@@ -7,7 +7,7 @@ import { MaritimeTrackLayer } from './MaritimeTrackLayer'
 import { useTrackHub } from '../../hooks/useTrackHub'
 
 const protocol = new Protocol()
-maplibregl.addProtocol('pmtiles', (request) => protocol.tile(request))
+maplibregl.addProtocol('pmtiles', protocol.tile)
 
 const PMTILES_URL = '/tiles/basemap.pmtiles'
 
