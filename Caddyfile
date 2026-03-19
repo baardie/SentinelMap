@@ -19,6 +19,10 @@
         reverse_proxy api:5000
     }
 
+    handle /health {
+        reverse_proxy api:5000
+    }
+
     handle {
         reverse_proxy web:80
     }
