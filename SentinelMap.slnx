@@ -10,5 +10,6 @@
     <Project Path="tests/SentinelMap.Api.Tests/SentinelMap.Api.Tests.csproj" />
     <Project Path="tests/SentinelMap.Domain.Tests/SentinelMap.Domain.Tests.csproj" />
     <Project Path="tests/SentinelMap.Infrastructure.Tests/SentinelMap.Infrastructure.Tests.csproj" />
+    <Project Path="tests/SentinelMap.Workers.Tests/SentinelMap.Workers.Tests.csproj" />
   </Folder>
 </Solution>
