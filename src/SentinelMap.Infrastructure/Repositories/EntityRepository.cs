@@ -1,0 +1,56 @@
+using Microsoft.EntityFrameworkCore;
+using NetTopologySuite.Geometries;
+using SentinelMap.Domain.Entities;
+using SentinelMap.Domain.Interfaces;
+using SentinelMap.Infrastructure.Data;
+
+namespace SentinelMap.Infrastructure.Repositories;
+
+public class EntityRepository : IEntityRepository
+{
+    private readonly SystemDbContext _db;
+
+    public EntityRepository(SystemDbContext db)
+    {
+        _db = db;
+    }
+
+    public async Task<TrackedEntity?> GetByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        return await _db.Entities.FindAsync([id], ct);
+    }
+
+    public async Task<TrackedEntity> AddAsync(TrackedEntity entity, CancellationToken ct = default)
+    {
+        _db.Entities.Add(entity);
+        await _db.SaveChangesAsync(ct);
+        return entity;
+    }
+
+    public async Task UpdateAsync(TrackedEntity entity, CancellationToken ct = default)
+    {
+        _db.Entities.Update(entity);
+        await _db.SaveChangesAsync(ct);
+    }
+
+    public async Task UpdatePositionAsync(
+        Guid entityId,
+        Point position,
+        double? speedMps,
+        double? heading,
+        DateTimeOffset lastSeen,
+        CancellationToken ct = default)
+    {
+        object?[] parameters = [position.X, position.Y, speedMps, heading, lastSeen, entityId];
+        await _db.Database.ExecuteSqlRawAsync(
+            @"UPDATE entities
+              SET last_known_position = ST_SetSRID(ST_MakePoint({0}, {1}), 4326),
+                  last_speed_mps = {2},
+                  last_heading = {3},
+                  last_seen = {4},
+                  updated_at = now()
+              WHERE id = {5}",
+            parameters,
+            ct);
+    }
+}
