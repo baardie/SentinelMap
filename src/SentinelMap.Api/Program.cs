@@ -5,11 +5,13 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using SentinelMap.Api.Endpoints;
+using SentinelMap.Api.Hubs;
 using SentinelMap.Infrastructure.Auth;
 using SentinelMap.Infrastructure.Data;
 using SentinelMap.Infrastructure.Identity;
 using SentinelMap.Infrastructure.Services;
 using SentinelMap.SharedKernel.Interfaces;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -63,6 +65,19 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new RsaSecurityKey(rsa),
             ClockSkew = TimeSpan.FromSeconds(30)
         };
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            }
+        };
     });
 
 // --- Authorization Policies ---
@@ -80,6 +95,21 @@ builder.Services.AddScoped<IUserContext, UserContext>();
 builder.Services.AddSingleton<AuditService>();
 builder.Services.AddSingleton<IAuditService>(sp => sp.GetRequiredService<AuditService>());
 builder.Services.AddHostedService(sp => sp.GetRequiredService<AuditService>());
+
+// --- Redis (for SignalR backplane + TrackHubService) ---
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis") ?? "redis:6379";
+builder.Services.AddSingleton<IConnectionMultiplexer>(
+    ConnectionMultiplexer.Connect(redisConnectionString));
+
+// --- SignalR with Redis backplane ---
+builder.Services.AddSignalR()
+    .AddStackExchangeRedis(redisConnectionString, options =>
+    {
+        options.Configuration.ChannelPrefix = RedisChannel.Literal("sentinel");
+    });
+
+// --- TrackHubService ---
+builder.Services.AddHostedService<TrackHubService>();
 
 // --- Swagger ---
 builder.Services.AddEndpointsApiExplorer();
@@ -121,6 +151,9 @@ if (app.Environment.IsDevelopment())
 // --- Endpoints ---
 app.MapHealthEndpoints();
 app.MapAuthEndpoints();
+app.MapHub<TrackHub>("/hubs/tracks");
+
+await SentinelMap.Api.Services.UserSeeder.SeedAsync(app.Services);
 
 app.Run();
 
