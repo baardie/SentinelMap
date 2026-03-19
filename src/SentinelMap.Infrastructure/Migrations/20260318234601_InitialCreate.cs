@@ -257,31 +257,26 @@ namespace SentinelMap.Infrastructure.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateTable(
-                name: "observations",
-                columns: table => new
-                {
-                    id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityAlwaysColumn),
-                    observed_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    entity_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    source_type = table.Column<string>(type: "text", nullable: false),
-                    external_id = table.Column<string>(type: "text", nullable: false),
-                    position = table.Column<Point>(type: "geometry(Point, 4326)", nullable: true),
-                    speed_mps = table.Column<double>(type: "double precision", nullable: true),
-                    heading = table.Column<double>(type: "double precision", nullable: true),
-                    raw_data = table.Column<string>(type: "jsonb", nullable: true),
-                    ingested_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_observations", x => new { x.id, x.observed_at });
-                    table.ForeignKey(
-                        name: "FK_observations_entities_entity_id",
-                        column: x => x.entity_id,
-                        principalTable: "entities",
-                        principalColumn: "id");
-                });
+            // Create observations as a partitioned table (PARTITION BY RANGE).
+            // EF Core does not support partitioned table DDL natively, so we use raw SQL.
+            // The EF model snapshot still maps this table for query/insert purposes.
+            migrationBuilder.Sql("""
+                CREATE TABLE observations (
+                    id            BIGINT GENERATED ALWAYS AS IDENTITY,
+                    observed_at   TIMESTAMPTZ NOT NULL,
+                    entity_id     UUID,
+                    source_type   TEXT NOT NULL,
+                    external_id   TEXT NOT NULL,
+                    position      geometry(Point, 4326),
+                    speed_mps     DOUBLE PRECISION,
+                    heading       DOUBLE PRECISION,
+                    raw_data      JSONB,
+                    ingested_at   TIMESTAMPTZ NOT NULL,
+                    PRIMARY KEY (id, observed_at),
+                    CONSTRAINT "FK_observations_entities_entity_id"
+                        FOREIGN KEY (entity_id) REFERENCES entities(id)
+                ) PARTITION BY RANGE (observed_at);
+                """);
 
             migrationBuilder.CreateTable(
                 name: "alerts",
@@ -489,8 +484,7 @@ namespace SentinelMap.Infrastructure.Migrations
             migrationBuilder.DropTable(
                 name: "entity_identifiers");
 
-            migrationBuilder.DropTable(
-                name: "observations");
+            migrationBuilder.Sql("DROP TABLE IF EXISTS observations CASCADE;");
 
             migrationBuilder.DropTable(
                 name: "users");
