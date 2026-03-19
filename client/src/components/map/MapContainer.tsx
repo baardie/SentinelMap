@@ -1,8 +1,10 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { Protocol } from 'pmtiles'
 import { layers, namedTheme } from 'protomaps-themes-base'
+import { MaritimeTrackLayer } from './MaritimeTrackLayer'
+import { useTrackHub } from '../../hooks/useTrackHub'
 
 const protocol = new Protocol()
 maplibregl.addProtocol('pmtiles', (request) => protocol.tile(request))
@@ -28,36 +30,36 @@ function buildMapStyle(): maplibregl.StyleSpecification {
   }
 }
 
-interface MapContainerProps {
-  onMapReady?: (map: maplibregl.Map) => void
-}
-
-export function MapContainer({ onMapReady }: MapContainerProps) {
+export function MapContainer() {
   const mapContainerRef = useRef<HTMLDivElement>(null)
-  const mapRef = useRef<maplibregl.Map | null>(null)
+  const [map, setMap] = useState<maplibregl.Map | null>(null)
+  const tracks = useTrackHub()
 
   useEffect(() => {
-    if (!mapContainerRef.current || mapRef.current) return
+    if (!mapContainerRef.current || map) return
 
-    const map = new maplibregl.Map({
+    const m = new maplibregl.Map({
       container: mapContainerRef.current,
       style: buildMapStyle(),
       center: [1.0, 51.0],
       zoom: 7,
     })
 
-    map.addControl(new maplibregl.NavigationControl(), 'bottom-right')
-    mapRef.current = map
+    m.addControl(new maplibregl.NavigationControl(), 'bottom-right')
 
-    map.on('load', () => {
-      onMapReady?.(map)
+    m.on('load', () => {
+      setMap(m)
     })
 
     return () => {
-      mapRef.current?.remove()
-      mapRef.current = null
+      m.remove()
+      setMap(null)
     }
-  }, [onMapReady])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  return <div ref={mapContainerRef} className="h-full w-full" />
+  return (
+    <div ref={mapContainerRef} className="h-full w-full">
+      {map && <MaritimeTrackLayer map={map} tracks={tracks} />}
+    </div>
+  )
 }
