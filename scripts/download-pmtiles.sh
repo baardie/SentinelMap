@@ -7,9 +7,10 @@
 
 set -euo pipefail
 
-SOURCE="https://build.protomaps.com/20241001.pmtiles"
+SOURCE="https://build.protomaps.com/20260319.pmtiles"
 OUTPUT="client/public/tiles/basemap.pmtiles"
-BBOX="-10,49,2,62"
+BBOX="-11,49,3,60"
+MAXZOOM=12
 
 mkdir -p "$(dirname "$OUTPUT")"
 
@@ -25,7 +26,7 @@ echo "Output: $OUTPUT"
 echo ""
 echo "This may take several minutes depending on connection speed."
 
-pmtiles extract "$SOURCE" "$OUTPUT" --bbox="$BBOX"
+pmtiles extract "$SOURCE" "$OUTPUT" --bbox="$BBOX" --maxzoom="$MAXZOOM"
 
 echo ""
 echo "Done. File size: $(du -sh "$OUTPUT" | cut -f1)"

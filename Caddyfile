@@ -8,11 +8,7 @@
     }
 
     handle /hubs/* {
-        reverse_proxy api:5000 {
-            transport http {
-                versions h2c 1.1
-            }
-        }
+        reverse_proxy api:5000
     }
 
     handle /swagger/* {
@@ -30,6 +26,6 @@
     header {
         X-Content-Type-Options "nosniff"
         X-Frame-Options "DENY"
-        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' ws: wss:;"
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://protomaps.github.io; connect-src 'self' ws: wss: https://protomaps.github.io; worker-src 'self' blob:; font-src 'self' https://protomaps.github.io;"
     }
 }

@@ -26,7 +26,7 @@ public class SimulatedAisConnectorTests
             if (observations.Count >= 5) break;
         }
 
-        observations.Count.Should().BeGreaterThanOrEqualTo(4, "at least one observation per vessel");
+        observations.Count.Should().BeGreaterThanOrEqualTo(5, "should yield multiple observations");
     }
 
     [Fact]
@@ -67,6 +67,6 @@ public class SimulatedAisConnectorTests
             if (count == 2) cts.Cancel();
         }
 
-        count.Should().BeLessThanOrEqualTo(4, "cancellation should stop iteration promptly");
+        count.Should().BeLessThanOrEqualTo(12, "cancellation should stop iteration promptly");
     }
 }

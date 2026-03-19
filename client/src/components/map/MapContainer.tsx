@@ -23,10 +23,7 @@ function buildMapStyle(): maplibregl.StyleSpecification {
         attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
       },
     },
-    layers: [
-      { id: 'background', type: 'background', paint: { 'background-color': '#0f172a' } },
-      ...layers('basemap', namedTheme('dark')) as maplibregl.LayerSpecification[],
-    ],
+    layers: layers('basemap', namedTheme('dark')) as maplibregl.LayerSpecification[],
   }
 }
 
@@ -41,8 +38,8 @@ export function MapContainer() {
     const m = new maplibregl.Map({
       container: mapContainerRef.current,
       style: buildMapStyle(),
-      center: [1.0, 51.0],
-      zoom: 7,
+      center: [-3.02, 53.38],
+      zoom: 12,
     })
 
     m.addControl(new maplibregl.NavigationControl(), 'bottom-right')
