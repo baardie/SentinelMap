@@ -29,26 +29,54 @@ builder.Services.AddSingleton<IObservationPublisher, RedisObservationPublisher>(
 builder.Services.AddSingleton<ObservationValidator>();
 builder.Services.AddTransient<IngestionPipeline>();
 
-// --- Connector selection based on data mode ---
-var dataMode = builder.Configuration["SENTINELMAP_DATA_MODE"]
-            ?? Environment.GetEnvironmentVariable("SENTINELMAP_DATA_MODE")
-            ?? "Simulated";
+// --- HttpClient (required for live ADS-B connector) ---
+builder.Services.AddHttpClient();
 
+// --- Data mode resolution ---
+var globalMode = (builder.Configuration["SENTINELMAP_DATA_MODE"]
+              ?? Environment.GetEnvironmentVariable("SENTINELMAP_DATA_MODE")
+              ?? "Simulated").ToLowerInvariant();
+
+string ResolveMode(string sourceEnvVar) =>
+    (Environment.GetEnvironmentVariable(sourceEnvVar)
+     ?? builder.Configuration[sourceEnvVar])?.ToLowerInvariant()
+    ?? globalMode;
+
+var aisMode = ResolveMode("SENTINELMAP_AIS_MODE");
+var adsbMode = ResolveMode("SENTINELMAP_ADSB_MODE");
+
+// --- Register AIS connector ---
 builder.Services.AddSingleton<ISourceConnector>(sp =>
 {
-    return dataMode.ToLowerInvariant() switch
+    if (aisMode == "live")
     {
-        "live" => new AisStreamConnector(
-            Environment.GetEnvironmentVariable("AISSTREAM_API_KEY")
-                ?? throw new InvalidOperationException("AISSTREAM_API_KEY required for Live mode"),
-            sp.GetRequiredService<ILogger<AisStreamConnector>>()),
+        var apiKey = Environment.GetEnvironmentVariable("AISSTREAM_API_KEY")
+            ?? throw new InvalidOperationException("AISSTREAM_API_KEY required for Live AIS mode");
+        return new AisStreamConnector(apiKey, sp.GetRequiredService<ILogger<AisStreamConnector>>());
+    }
+    return new SimulatedAisConnector();
+});
 
-        _ => new SimulatedAisConnector()
-    };
+// --- Register ADS-B connector ---
+builder.Services.AddSingleton<ISourceConnector>(sp =>
+{
+    if (adsbMode == "live")
+    {
+        var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+        var httpClient = httpClientFactory.CreateClient();
+        return new AdsbLiveConnector(httpClient, 53.38, -3.02, 50,
+            sp.GetRequiredService<ILogger<AdsbLiveConnector>>());
+    }
+    return new SimulatedAdsbConnector();
 });
 
 // --- Background Services ---
-builder.Services.AddHostedService<IngestionWorker>();
+builder.Services.AddHostedService(sp =>
+{
+    var connectors = sp.GetServices<ISourceConnector>().ToList();
+    return new CompositeIngestionWorker(connectors, sp.GetRequiredService<IServiceScopeFactory>(),
+        sp.GetRequiredService<ILogger<IngestionWorker>>());
+});
 builder.Services.AddHostedService<CorrelationWorker>();
 
 var host = builder.Build();

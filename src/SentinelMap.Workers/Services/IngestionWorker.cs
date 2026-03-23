@@ -25,7 +25,10 @@ public class IngestionWorker : BackgroundService
         _logger = logger;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    protected override Task ExecuteAsync(CancellationToken stoppingToken) =>
+        RunAsync(stoppingToken);
+
+    public async Task RunAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation("IngestionWorker starting for source {SourceId}", _connector.SourceId);
 
