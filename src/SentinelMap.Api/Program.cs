@@ -238,6 +238,8 @@ app.MapAlertEndpoints();
 app.MapMapFeatureEndpoints();
 app.MapExportEndpoints();
 app.MapAdminEndpoints();
+app.MapWebhookEndpoints();
+app.MapSessionEndpoints();
 app.MapSystemEndpoints();
 app.MapHub<TrackHub>("/hubs/tracks");
 

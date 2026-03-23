@@ -6,6 +6,7 @@ using SentinelMap.Infrastructure.Correlation;
 using SentinelMap.Infrastructure.Data;
 using SentinelMap.Infrastructure.Pipeline;
 using SentinelMap.Infrastructure.Repositories;
+using SentinelMap.Infrastructure.Services;
 using SentinelMap.Workers.Services;
 using StackExchange.Redis;
 
@@ -50,6 +51,7 @@ builder.Services.AddTransient<IAlertRule, GeofenceBreachRule>();
 builder.Services.AddTransient<IAlertRule, WatchlistMatchRule>();
 builder.Services.AddTransient<IAlertRule, SpeedAnomalyRule>();
 builder.Services.AddTransient<IAlertRule, TransponderSwapRule>();
+builder.Services.AddTransient<IAlertRule, RouteDeviationRule>();
 
 // --- HttpClient (required for live ADS-B connector) ---
 builder.Services.AddHttpClient();
@@ -104,6 +106,7 @@ builder.Services.AddHostedService(sp =>
 builder.Services.AddHostedService<CorrelationWorker>();
 builder.Services.AddHostedService<AlertingWorker>();
 builder.Services.AddHostedService<MapFeatureWorker>();
+builder.Services.AddHostedService<WebhookService>();
 
 var host = builder.Build();
 host.Run();
