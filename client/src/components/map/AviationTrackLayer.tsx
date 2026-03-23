@@ -43,6 +43,7 @@ export function AviationTrackLayer({ map, tracks }: AviationTrackLayerProps) {
       id: LAYER_ID,
       type: 'symbol',
       source: SOURCE_ID,
+      minzoom: 5,
       layout: {
         'icon-image': ICON_ID,
         'icon-size': 0.7,
@@ -60,7 +61,7 @@ export function AviationTrackLayer({ map, tracks }: AviationTrackLayerProps) {
         'icon-opacity': [
           'case',
           ['==', ['get', 'status'], 'Dark'], 0.3,
-          1.0,
+          ['interpolate', ['linear'], ['get', 'staleness'], 0, 1.0, 1, 0.3],
         ],
         'text-color': '#0ea5e9',
         'text-halo-color': '#0f172a',

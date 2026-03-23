@@ -6,6 +6,7 @@ import { layers, namedTheme } from 'protomaps-themes-base'
 import { MaritimeTrackLayer } from './MaritimeTrackLayer'
 import { AviationTrackLayer } from './AviationTrackLayer'
 import { GeofenceLayer } from './GeofenceLayer'
+import { TrackHistoryLayer } from './TrackHistoryLayer'
 import { EntityDetailPanel } from './EntityDetailPanel'
 import type { TrackFeature, TrackProperties, GeofenceData } from '../../types'
 
@@ -36,14 +37,16 @@ export interface MapContainerHandle {
 
 interface MapContainerProps {
   tracks: TrackFeature[]
+  trackHistory: Map<string, [number, number][]>
   geofences?: GeofenceData[]
 }
 
 export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
-  function MapContainer({ tracks, geofences = [] }, ref) {
+  function MapContainer({ tracks, trackHistory, geofences = [] }, ref) {
     const mapContainerRef = useRef<HTMLDivElement>(null)
     const [map, setMap] = useState<maplibregl.Map | null>(null)
     const [selectedEntity, setSelectedEntity] = useState<TrackProperties | null>(null)
+    const [trailsVisible, setTrailsVisible] = useState(true)
     const mapRef = useRef<maplibregl.Map | null>(null)
     const tracksRef = useRef<TrackFeature[]>(tracks)
 
@@ -105,12 +108,33 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
 
     return (
       <div ref={mapContainerRef} className="h-full w-full relative">
+        {map && (
+          <TrackHistoryLayer
+            map={map}
+            trackHistory={trackHistory}
+            tracks={tracks}
+            visible={trailsVisible}
+          />
+        )}
         {map && <MaritimeTrackLayer map={map} tracks={tracks} />}
         {map && <AviationTrackLayer map={map} tracks={tracks} />}
         {map && <GeofenceLayer map={map} geofences={geofences} />}
         {selectedEntity && (
           <EntityDetailPanel entity={selectedEntity} onClose={() => setSelectedEntity(null)} />
         )}
+        {/* Trails toggle button */}
+        <button
+          onClick={() => setTrailsVisible(v => !v)}
+          title={trailsVisible ? 'Hide Trails' : 'Show Trails'}
+          className={`absolute top-3 left-3 z-10 px-2 py-1 font-mono text-xs tracking-widest border transition-colors ${
+            trailsVisible
+              ? 'bg-slate-700 border-slate-500 text-slate-200'
+              : 'bg-slate-900 border-slate-700 text-slate-500'
+          }`}
+          style={{ borderRadius: '2px' }}
+        >
+          TRAILS
+        </button>
       </div>
     )
   }

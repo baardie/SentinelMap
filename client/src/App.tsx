@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 import { ClassificationBanner } from '@/components/layout/ClassificationBanner'
 import { TopBar } from '@/components/layout/TopBar'
@@ -23,8 +23,19 @@ function LoadingScreen() {
 }
 
 function CopLayout() {
-  const { tracks, alerts } = useTrackHub()
+  const { tracks, alerts, trackHistory, connectionStatus } = useTrackHub()
   const mapRef = useRef<MapContainerHandle>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+
+  const filteredTracks = searchTerm
+    ? tracks.filter(t =>
+        t.properties.displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        t.properties.entityId.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : tracks
+
+  const vesselCount = tracks.filter(t => t.properties.entityType === 'Vessel').length
+  const aircraftCount = tracks.filter(t => t.properties.entityType === 'Aircraft').length
 
   const handleAlertClick = (entityId: string) => {
     mapRef.current?.flyToEntity(entityId)
@@ -33,12 +44,18 @@ function CopLayout() {
   return (
     <div className="flex h-screen flex-col bg-slate-950 text-slate-100">
       <ClassificationBanner />
-      <TopBar />
+      <TopBar searchTerm={searchTerm} onSearch={setSearchTerm} />
       <main className="flex-1 overflow-hidden">
-        <MapContainer ref={mapRef} tracks={tracks} />
+        <MapContainer ref={mapRef} tracks={filteredTracks} trackHistory={trackHistory} />
       </main>
       <AlertFeed alerts={alerts} onAlertClick={handleAlertClick} />
-      <StatusBar />
+      <StatusBar
+        trackCount={tracks.length}
+        vesselCount={vesselCount}
+        aircraftCount={aircraftCount}
+        alertCount={alerts.length}
+        connectionStatus={connectionStatus}
+      />
     </div>
   )
 }

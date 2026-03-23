@@ -33,6 +33,7 @@ export interface TrackProperties {
   aircraftType: AircraftType
   displayName: string
   lastUpdated: string
+  staleness: number
 }
 
 export type TrackFeature = Feature<Point, TrackProperties>

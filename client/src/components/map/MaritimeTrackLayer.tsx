@@ -51,6 +51,7 @@ export function MaritimeTrackLayer({ map, tracks }: MaritimeTrackLayerProps) {
       id: LAYER_ID,
       type: 'symbol',
       source: SOURCE_ID,
+      minzoom: 5,
       layout: {
         'icon-image': ICON_ID,
         'icon-size': 0.8,
@@ -75,7 +76,7 @@ export function MaritimeTrackLayer({ map, tracks }: MaritimeTrackLayerProps) {
         'icon-opacity': [
           'case',
           ['==', ['get', 'status'], 'Dark'], 0.3,
-          1.0,
+          ['interpolate', ['linear'], ['get', 'staleness'], 0, 1.0, 1, 0.3],
         ],
         'text-color': '#94a3b8',
         'text-halo-color': '#0f172a',
