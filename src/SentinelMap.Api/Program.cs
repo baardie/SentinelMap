@@ -1,5 +1,7 @@
 using System.Security.Cryptography;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -127,6 +129,33 @@ builder.Services.AddTransient<IGeofenceRepository, GeofenceRepository>();
 builder.Services.AddTransient<IWatchlistRepository, WatchlistRepository>();
 builder.Services.AddTransient<IAlertRepository, AlertRepository>();
 
+// --- Rate Limiting ---
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = 429;
+
+    options.AddFixedWindowLimiter("auth", o =>
+    {
+        o.Window = TimeSpan.FromMinutes(1);
+        o.PermitLimit = 10;
+        o.QueueLimit = 0;
+    });
+
+    options.AddFixedWindowLimiter("api-read", o =>
+    {
+        o.Window = TimeSpan.FromMinutes(1);
+        o.PermitLimit = 100;
+        o.QueueLimit = 0;
+    });
+
+    options.AddFixedWindowLimiter("api-write", o =>
+    {
+        o.Window = TimeSpan.FromMinutes(1);
+        o.PermitLimit = 30;
+        o.QueueLimit = 0;
+    });
+});
+
 // --- Swagger ---
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -162,12 +191,37 @@ using (var scope = app.Services.CreateScope())
         var sql = $"CREATE TABLE IF NOT EXISTS {tableName} PARTITION OF observations FOR VALUES FROM ('{date:yyyy-MM-dd}') TO ('{next:yyyy-MM-dd}')";
         await db.Database.ExecuteSqlRawAsync(sql);
     }
+
+    // Ensure audit_events partitioned table and current-month partition exist
+    var systemDb = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+    await systemDb.Database.ExecuteSqlRawAsync("""
+        CREATE TABLE IF NOT EXISTS audit_events (
+            id            BIGINT GENERATED ALWAYS AS IDENTITY,
+            timestamp     TIMESTAMPTZ NOT NULL DEFAULT now(),
+            event_type    TEXT NOT NULL,
+            user_id       UUID,
+            action        TEXT NOT NULL,
+            resource_type TEXT NOT NULL,
+            resource_id   UUID,
+            details       JSONB,
+            ip_address    INET,
+            PRIMARY KEY (id, timestamp)
+        ) PARTITION BY RANGE (timestamp);
+        """);
+
+    var monthStart = new DateTimeOffset(today.Year, today.Month, 1, 0, 0, 0, TimeSpan.Zero);
+    var monthEnd = monthStart.AddMonths(1);
+    var partitionName = $"audit_events_{monthStart:yyyy_MM}";
+    await systemDb.Database.ExecuteSqlRawAsync(
+        $"CREATE TABLE IF NOT EXISTS {partitionName} PARTITION OF audit_events " +
+        $"FOR VALUES FROM ('{monthStart:yyyy-MM-dd}') TO ('{monthEnd:yyyy-MM-dd}')");
 }
 
 // --- Middleware ---
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 if (app.Environment.IsDevelopment())
 {
