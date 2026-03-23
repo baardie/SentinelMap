@@ -18,7 +18,9 @@ public class EntityRepository : IEntityRepository
 
     public async Task<TrackedEntity?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
-        return await _db.Entities.FindAsync([id], ct);
+        return await _db.Entities
+            .Include(e => e.Identifiers)
+            .FirstOrDefaultAsync(e => e.Id == id, ct);
     }
 
     public async Task<TrackedEntity> AddAsync(TrackedEntity entity, CancellationToken ct = default)

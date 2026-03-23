@@ -210,7 +210,9 @@ public class AlertingWorker : BackgroundService
             EntityId = entityId,
             GeofenceId = trigger.GeofenceId,
             Summary = trigger.Summary,
-            Details = trigger.Details,
+            Details = trigger.Details != null
+                ? System.Text.Json.JsonSerializer.Serialize(new { message = trigger.Details })
+                : null,
             Status = AlertStatus.Triggered,
             CreatedAt = DateTimeOffset.UtcNow
         };

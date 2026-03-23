@@ -58,6 +58,16 @@ public class CorrelationProcessor
             Status = EntityStatus.Active,
         };
 
+        // Add identifier linking external ID to entity
+        var identifierType = msg.SourceType == "ADSB" ? "ICAO" : "MMSI";
+        entity.Identifiers.Add(new EntityIdentifier
+        {
+            EntityId = entity.Id,
+            IdentifierType = identifierType,
+            IdentifierValue = msg.ExternalId,
+            Source = msg.SourceType,
+        });
+
         await _entityRepo.AddAsync(entity, ct);
 
         // Cache the link for future observations
