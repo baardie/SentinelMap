@@ -11,6 +11,7 @@ public class Geofence
     public string FenceType { get; set; } = "Both";
     public Classification Classification { get; set; } = Classification.Official;
     public Guid CreatedBy { get; set; }
+    public string? Color { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;

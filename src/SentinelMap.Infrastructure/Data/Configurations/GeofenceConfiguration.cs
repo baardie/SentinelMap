@@ -16,6 +16,7 @@ public class GeofenceConfiguration : IEntityTypeConfiguration<Geofence>
         builder.Property(g => g.FenceType).HasColumnName("fence_type");
         builder.Property(g => g.Classification).HasColumnName("classification").HasConversion<string>();
         builder.Property(g => g.CreatedBy).HasColumnName("created_by");
+        builder.Property(g => g.Color).HasColumnName("color");
         builder.Property(g => g.IsActive).HasColumnName("is_active");
         builder.Property(g => g.CreatedAt).HasColumnName("created_at");
         builder.Property(g => g.UpdatedAt).HasColumnName("updated_at");

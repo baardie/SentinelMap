@@ -59,6 +59,7 @@ public static class GeofenceEndpoints
             Name = request.Name,
             Geometry = polygon,
             FenceType = request.FenceType,
+            Color = request.Color,
             CreatedBy = userContext.UserId ?? Guid.Empty
         };
 
@@ -87,6 +88,7 @@ public static class GeofenceEndpoints
 
         geofence.Name = request.Name;
         geofence.FenceType = request.FenceType;
+        geofence.Color = request.Color ?? geofence.Color;
         geofence.UpdatedAt = DateTimeOffset.UtcNow;
 
         await repo.UpdateAsync(geofence, ct);
@@ -110,9 +112,9 @@ public static class GeofenceEndpoints
         var coords = g.Geometry?.Coordinates
             .Select(c => new[] { c.X, c.Y })
             .ToArray() ?? [];
-        return new GeofenceResponse(g.Id, g.Name, coords, g.FenceType, g.IsActive, g.CreatedAt);
+        return new GeofenceResponse(g.Id, g.Name, coords, g.FenceType, g.IsActive, g.Color, g.CreatedAt);
     }
 }
 
-record CreateGeofenceRequest(string Name, double[][] Coordinates, string FenceType = "Both");
-record GeofenceResponse(Guid Id, string Name, double[][] Coordinates, string FenceType, bool IsActive, DateTimeOffset CreatedAt);
+record CreateGeofenceRequest(string Name, double[][] Coordinates, string FenceType = "Both", string? Color = null);
+record GeofenceResponse(Guid Id, string Name, double[][] Coordinates, string FenceType, bool IsActive, string? Color, DateTimeOffset CreatedAt);
