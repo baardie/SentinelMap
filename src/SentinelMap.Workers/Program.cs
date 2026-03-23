@@ -96,6 +96,7 @@ builder.Services.AddHostedService(sp =>
 });
 builder.Services.AddHostedService<CorrelationWorker>();
 builder.Services.AddHostedService<AlertingWorker>();
+builder.Services.AddHostedService<MapFeatureWorker>();
 
 var host = builder.Build();
 host.Run();

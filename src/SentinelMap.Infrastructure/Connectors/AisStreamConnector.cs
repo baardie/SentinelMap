@@ -13,7 +13,8 @@ namespace SentinelMap.Infrastructure.Connectors;
 /// <summary>
 /// Live AIS connector via AISStream.io WebSocket.
 /// Requires AISSTREAM_API_KEY environment variable.
-/// Parses message types: PositionReport (1-3), ShipStaticData (5), StandardClassBPositionReport (18-19).
+/// Parses message types: PositionReport (1-3), ShipStaticData (5), StandardClassBPositionReport (18-19),
+/// BaseStationReport (4), AidsToNavigationReport (21), SafetyBroadcastMessage.
 /// </summary>
 public class AisStreamConnector : ISourceConnector
 {
@@ -44,7 +45,7 @@ public class AisStreamConnector : ISourceConnector
             APIKey = _apiKey,
             // UK + NI + English Channel + Irish Sea bounding box
             BoundingBoxes = new[] { new[] { new[] { -11.0, 49.0 }, new[] { 2.5, 61.0 } } },
-            FilterMessageTypes = new[] { "PositionReport", "ShipStaticData", "StandardClassBPositionReport" }
+            FilterMessageTypes = new[] { "PositionReport", "ShipStaticData", "StandardClassBPositionReport", "BaseStationReport", "AidsToNavigationReport", "SafetyBroadcastMessage" }
         });
 
         var subscriptionBytes = Encoding.UTF8.GetBytes(subscription);
@@ -103,6 +104,9 @@ public class AisStreamConnector : ISourceConnector
                 "PositionReport" => ParsePositionReport(node, mmsi, observedAt),
                 "StandardClassBPositionReport" => ParsePositionReport(node, mmsi, observedAt),
                 "ShipStaticData" => ParseShipStaticData(node, mmsi, observedAt),
+                "BaseStationReport" => ParseBaseStationReport(node, mmsi, observedAt),
+                "AidsToNavigationReport" => ParseAidsToNavigationReport(node, mmsi, observedAt),
+                "SafetyBroadcastMessage" => ParseSafetyBroadcastMessage(node, mmsi, observedAt),
                 _ => null,
             };
         }
@@ -171,6 +175,77 @@ public class AisStreamConnector : ISourceConnector
                 imoNumber = imo,
                 aisShipType = shipType,
                 vesselType = MapAisShipType(shipType),
+            }),
+        };
+    }
+
+    private static Observation? ParseBaseStationReport(JsonNode node, string mmsi, DateTimeOffset observedAt)
+    {
+        var report = node["Message"]?["BaseStationReport"];
+        if (report is null) return null;
+
+        var lat = report["Latitude"]?.GetValue<double>() ?? 0;
+        var lon = report["Longitude"]?.GetValue<double>() ?? 0;
+
+        if (lat == 0 && lon == 0) return null;
+
+        return new Observation
+        {
+            SourceType = "AIS_INFRA",
+            ExternalId = mmsi,
+            Position = new Point(lon, lat) { SRID = 4326 },
+            ObservedAt = observedAt,
+            RawData = JsonSerializer.Serialize(new
+            {
+                featureType = "AisBaseStation",
+                mmsi,
+            }),
+        };
+    }
+
+    private static Observation? ParseAidsToNavigationReport(JsonNode node, string mmsi, DateTimeOffset observedAt)
+    {
+        var report = node["Message"]?["AidsToNavigationReport"];
+        if (report is null) return null;
+
+        var lat = report["Latitude"]?.GetValue<double>() ?? 0;
+        var lon = report["Longitude"]?.GetValue<double>() ?? 0;
+        var name = report["Name"]?.GetValue<string>() ?? mmsi;
+        var aidType = report["Type"]?.GetValue<int>() ?? 0;
+
+        if (lat == 0 && lon == 0) return null;
+
+        return new Observation
+        {
+            SourceType = "AIS_INFRA",
+            ExternalId = mmsi,
+            Position = new Point(lon, lat) { SRID = 4326 },
+            ObservedAt = observedAt,
+            RawData = JsonSerializer.Serialize(new
+            {
+                featureType = "AidToNavigation",
+                name,
+                aidType,
+            }),
+        };
+    }
+
+    private static Observation? ParseSafetyBroadcastMessage(JsonNode node, string mmsi, DateTimeOffset observedAt)
+    {
+        var report = node["Message"]?["SafetyBroadcastMessage"];
+        if (report is null) return null;
+
+        var text = report["Text"]?.GetValue<string>() ?? "";
+
+        return new Observation
+        {
+            SourceType = "AIS_SAFETY",
+            ExternalId = mmsi,
+            ObservedAt = observedAt,
+            RawData = JsonSerializer.Serialize(new
+            {
+                text,
+                mmsi,
             }),
         };
     }

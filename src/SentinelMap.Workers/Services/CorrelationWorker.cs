@@ -30,6 +30,10 @@ public class CorrelationProcessor
 
     public async Task<EntityUpdatedMessage?> ProcessAsync(ObservationPublishedMessage msg, CancellationToken ct = default)
     {
+        // Skip infrastructure and safety messages — they're not tracked entities
+        if (msg.SourceType != "AIS" && msg.SourceType != "ADSB")
+            return null;
+
         var entityType = msg.SourceType == "ADSB" ? EntityType.Aircraft : EntityType.Vessel;
         var cacheKey = $"correlation:link:{msg.SourceType}:{msg.ExternalId}";
         var cached = await _db.StringGetAsync(cacheKey);

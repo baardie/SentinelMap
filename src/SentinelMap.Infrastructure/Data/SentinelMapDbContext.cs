@@ -31,6 +31,7 @@ public class SentinelMapDbContext : IdentityDbContext<AppIdentityUser, IdentityR
     public DbSet<WatchlistEntry> WatchlistEntries => Set<WatchlistEntry>();
     public DbSet<User> DomainUsers => Set<User>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<MapFeature> MapFeatures => Set<MapFeature>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

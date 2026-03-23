@@ -235,6 +235,7 @@ app.MapAuthEndpoints();
 app.MapGeofenceEndpoints();
 app.MapWatchlistEndpoints();
 app.MapAlertEndpoints();
+app.MapMapFeatureEndpoints();
 app.MapHub<TrackHub>("/hubs/tracks");
 
 await SentinelMap.Api.Services.UserSeeder.SeedAsync(app.Services);
@@ -244,6 +245,8 @@ if (dataMode != "live")
 {
     await SentinelMap.Api.Services.DemoSeeder.SeedAsync(app.Services);
 }
+
+await SentinelMap.Api.Services.StaticFeatureSeeder.SeedAsync(app.Services);
 
 app.Run();
 
