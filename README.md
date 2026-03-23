@@ -51,38 +51,103 @@ Set `SENTINELMAP_DATA_MODE` in `.env`. Per-source overrides available via `SENTI
 
 ### System Diagram
 
-```
-Browser ─── Caddy (80/443) ─┬── Web (React SPA)
-                             │
-                             ├── API (ASP.NET Core)
-                             │    ├── SignalR Hub (/hubs/tracks)
-                             │    ├── REST API (/api/v1/*)
-                             │    └── Identity + JWT
-                             │
-Redis ◄─────────────────────┤
-  (pub/sub, dedup, cache)    │
-                             └── Workers
-PostgreSQL ◄────────────────────  ├── AIS Ingestion
-  (PostGIS, partitioned)         ├── ADS-B Ingestion
-                                 ├── Correlation
-                                 └── Alerting
+```mermaid
+graph TB
+    subgraph "Client Tier"
+        Browser["Browser<br/>React 19 + MapLibre GL"]
+    end
+
+    subgraph "DMZ"
+        Caddy["Caddy 2<br/>Reverse Proxy + TLS + CSP"]
+    end
+
+    subgraph "Application Tier"
+        Web["Web<br/>React SPA (Vite)"]
+        API["API<br/>ASP.NET Core 9<br/>REST + SignalR"]
+        Workers["Workers<br/>BackgroundServices"]
+    end
+
+    subgraph "Data Tier"
+        DB["PostgreSQL 16<br/>PostGIS 3.4"]
+        Redis["Redis 7<br/>Pub/Sub + Cache"]
+    end
+
+    subgraph "External Sources"
+        AIS["AISStream.io<br/>WebSocket"]
+        ADSB["Airplanes.live<br/>REST API"]
+    end
+
+    Browser --> Caddy
+    Caddy --> Web
+    Caddy --> API
+    API --> DB
+    API --> Redis
+    Workers --> DB
+    Workers --> Redis
+    Workers --> AIS
+    Workers --> ADSB
+    Redis -.->|"SignalR Backplane"| API
 ```
 
 All inter-service communication passes through Redis pub/sub — no service-to-service HTTP. Workers publish to Redis channels; the API SignalR hub consumes via the Redis backplane and pushes to WebSocket clients.
 
 ### Data Pipeline
 
-```
-AIS/ADS-B Source → Parse → Validate → Deduplicate → Persist → Publish
-                                                         │
-                                                    Correlate → Entity
-                                                         │
-                                                   Alert Rules → Alert Feed
-                                                         │
-                                                   SignalR → Browser
+```mermaid
+graph LR
+    subgraph "Ingestion"
+        AIS["AIS Source"] --> Parse["Parse"]
+        ADSB["ADS-B Source"] --> Parse
+        Parse --> Validate --> Dedup["Deduplicate"] --> Persist --> Publish["Redis Pub/Sub"]
+    end
+
+    subgraph "Processing"
+        Publish --> Correlate["Correlation<br/>Engine"]
+        Correlate --> EntityUpdate["Entity<br/>Update"]
+        EntityUpdate --> AlertRules["Alert<br/>Rules"]
+    end
+
+    subgraph "Delivery"
+        AlertRules --> AlertFeed["Alert Feed"]
+        EntityUpdate --> SignalR["SignalR Hub"]
+        SignalR --> Browser["Browser"]
+        AlertFeed --> Browser
+    end
 ```
 
 Ingestion and correlation are independent pipeline stages (ADR-002). A slow correlation query cannot backpressure ingestion. A hot-path Redis cache means 90%+ of observations skip the full correlation SQL query entirely.
+
+### Security Architecture
+
+```mermaid
+graph TB
+    subgraph "Trust Boundary 1: Internet"
+        Client["Browser"]
+    end
+
+    subgraph "Trust Boundary 2: DMZ"
+        Caddy["Caddy<br/>CSP + CORS + Rate Limit"]
+    end
+
+    subgraph "Trust Boundary 3: Application"
+        JWT["JWT RS256<br/>15-min Access Token"]
+        RBAC["RBAC<br/>Viewer/Analyst/Admin"]
+        ClassFilter["Classification<br/>EF Query Filters"]
+        Audit["Audit Service<br/>Two-Path Logging"]
+    end
+
+    subgraph "Trust Boundary 4: Data"
+        DB["PostgreSQL<br/>Partitioned + Filtered"]
+        Redis["Redis<br/>Internal Only"]
+    end
+
+    Client -->|"HTTPS"| Caddy
+    Caddy -->|"Bearer Token"| JWT
+    JWT --> RBAC
+    RBAC --> ClassFilter
+    ClassFilter --> DB
+    RBAC --> Audit
+```
 
 ### Tech Stack
 
