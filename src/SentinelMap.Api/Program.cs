@@ -59,6 +59,8 @@ builder.Services.AddSingleton(sp => new JwtTokenService(
     builder.Configuration["Jwt:Audience"] ?? "SentinelMap"
 ));
 
+builder.Services.AddTransient<RefreshTokenService>();
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
