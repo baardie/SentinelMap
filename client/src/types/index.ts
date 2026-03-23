@@ -34,3 +34,20 @@ export interface TrackProperties {
 }
 
 export type TrackFeature = Feature<Point, TrackProperties>
+
+export interface AlertNotification {
+  alertId: string
+  type: 'GeofenceBreach' | 'WatchlistMatch' | 'AisDark' | 'SpeedAnomaly' | 'TransponderSwap' | 'CorrelationLink'
+  severity: 'Low' | 'Medium' | 'High' | 'Critical'
+  entityId: string | null
+  summary: string
+  createdAt: string
+}
+
+export interface GeofenceData {
+  id: string
+  name: string
+  coordinates: number[][]
+  fenceType: string
+  isActive: boolean
+}
