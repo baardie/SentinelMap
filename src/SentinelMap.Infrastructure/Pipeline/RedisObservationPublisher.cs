@@ -17,6 +17,17 @@ public class RedisObservationPublisher : IObservationPublisher
 
     public async Task PublishAsync(Observation observation, CancellationToken ct = default)
     {
+        string? displayName = null;
+        if (!string.IsNullOrEmpty(observation.RawData))
+        {
+            try
+            {
+                var rawNode = System.Text.Json.Nodes.JsonNode.Parse(observation.RawData);
+                displayName = rawNode?["displayName"]?.GetValue<string>();
+            }
+            catch { }
+        }
+
         var message = new ObservationPublishedMessage(
             ObservationId: observation.Id,
             ObservedAt: observation.ObservedAt,
@@ -25,7 +36,8 @@ public class RedisObservationPublisher : IObservationPublisher
             Longitude: observation.Position?.X ?? 0,
             Latitude: observation.Position?.Y ?? 0,
             Heading: observation.Heading,
-            SpeedMps: observation.SpeedMps);
+            SpeedMps: observation.SpeedMps,
+            DisplayName: displayName);
 
         var json = JsonSerializer.Serialize(message);
         var channel = RedisChannel.Literal($"observations:{observation.SourceType}");

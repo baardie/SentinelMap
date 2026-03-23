@@ -44,6 +44,7 @@ public class TrackHubService : BackgroundService
                 entityType = evt.EntityType,
                 status = evt.Status,
                 timestamp = evt.Timestamp,
+                displayName = evt.DisplayName,
             };
 
             try

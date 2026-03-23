@@ -12,4 +12,5 @@ public record ObservationPublishedMessage(
     double Longitude,
     double Latitude,
     double? Heading,
-    double? SpeedMps);
+    double? SpeedMps,
+    string? DisplayName = null);

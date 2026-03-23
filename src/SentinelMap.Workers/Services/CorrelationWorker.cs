@@ -30,6 +30,7 @@ public class CorrelationProcessor
 
     public async Task<EntityUpdatedMessage?> ProcessAsync(ObservationPublishedMessage msg, CancellationToken ct = default)
     {
+        var entityType = msg.SourceType == "ADSB" ? EntityType.Aircraft : EntityType.Vessel;
         var cacheKey = $"correlation:link:{msg.SourceType}:{msg.ExternalId}";
         var cached = await _db.StringGetAsync(cacheKey);
         var position = new Point(msg.Longitude, msg.Latitude) { SRID = 4326 };
@@ -42,13 +43,14 @@ public class CorrelationProcessor
             _logger.LogDebug("Hot-path hit for {Source}:{ExternalId} → entity {EntityId}", msg.SourceType, msg.ExternalId, entityId);
 
             return new EntityUpdatedMessage(entityId, msg.Longitude, msg.Latitude, msg.Heading, msg.SpeedMps,
-                EntityType.Vessel.ToString(), EntityStatus.Active.ToString(), msg.ObservedAt);
+                entityType.ToString(), EntityStatus.Active.ToString(), msg.ObservedAt, msg.DisplayName);
         }
 
         // Cold path: new identifier — create entity
         var entity = new TrackedEntity
         {
-            Type = EntityType.Vessel,
+            Type = entityType,
+            DisplayName = msg.DisplayName,
             LastKnownPosition = position,
             LastSpeedMps = msg.SpeedMps,
             LastHeading = msg.Heading,
@@ -64,7 +66,7 @@ public class CorrelationProcessor
         _logger.LogInformation("Created entity {EntityId} for {Source}:{ExternalId}", entity.Id, msg.SourceType, msg.ExternalId);
 
         return new EntityUpdatedMessage(entity.Id, msg.Longitude, msg.Latitude, msg.Heading, msg.SpeedMps,
-            EntityType.Vessel.ToString(), EntityStatus.Active.ToString(), msg.ObservedAt);
+            entityType.ToString(), EntityStatus.Active.ToString(), msg.ObservedAt, msg.DisplayName);
     }
 }
 

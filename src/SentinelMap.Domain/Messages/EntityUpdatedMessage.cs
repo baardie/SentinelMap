@@ -12,4 +12,5 @@ public record EntityUpdatedMessage(
     double? Speed,
     string EntityType,
     string Status,
-    DateTimeOffset Timestamp);
+    DateTimeOffset Timestamp,
+    string? DisplayName = null);

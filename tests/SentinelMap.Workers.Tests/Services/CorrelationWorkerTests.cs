@@ -58,4 +58,70 @@ public class CorrelationWorkerTests
             It.IsAny<When>(),
             It.IsAny<CommandFlags>()), Times.Once);
     }
+
+    [Fact]
+    public async Task AdsbObservation_CreatesAircraftEntity()
+    {
+        _redisDb.Setup(db => db.StringGetAsync("correlation:link:ADSB:A1B2C3", It.IsAny<CommandFlags>()))
+            .ReturnsAsync(RedisValue.Null);
+
+        TrackedEntity? createdEntity = null;
+        _entityRepo.Setup(r => r.AddAsync(It.IsAny<TrackedEntity>(), It.IsAny<CancellationToken>()))
+            .Callback<TrackedEntity, CancellationToken>((e, _) => createdEntity = e)
+            .ReturnsAsync((TrackedEntity e, CancellationToken _) => e);
+
+        var processor = new CorrelationProcessor(_entityRepo.Object, _redisDb.Object,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<CorrelationProcessor>.Instance);
+
+        var msg = new ObservationPublishedMessage(3, DateTimeOffset.UtcNow, "ADSB", "A1B2C3", -0.5, 51.5, 270.0, 250.0);
+
+        var result = await processor.ProcessAsync(msg);
+
+        createdEntity.Should().NotBeNull();
+        createdEntity!.Type.Should().Be(EntityType.Aircraft);
+        result.Should().NotBeNull();
+        result!.EntityType.Should().Be(EntityType.Aircraft.ToString());
+    }
+
+    [Fact]
+    public async Task DisplayName_FlowsThroughPipeline()
+    {
+        _redisDb.Setup(db => db.StringGetAsync("correlation:link:AIS:112233445", It.IsAny<CommandFlags>()))
+            .ReturnsAsync(RedisValue.Null);
+
+        TrackedEntity? createdEntity = null;
+        _entityRepo.Setup(r => r.AddAsync(It.IsAny<TrackedEntity>(), It.IsAny<CancellationToken>()))
+            .Callback<TrackedEntity, CancellationToken>((e, _) => createdEntity = e)
+            .ReturnsAsync((TrackedEntity e, CancellationToken _) => e);
+
+        var processor = new CorrelationProcessor(_entityRepo.Object, _redisDb.Object,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<CorrelationProcessor>.Instance);
+
+        var msg = new ObservationPublishedMessage(4, DateTimeOffset.UtcNow, "AIS", "112233445", 2.0, 52.0, null, null, "MV Sentinel");
+
+        var result = await processor.ProcessAsync(msg);
+
+        createdEntity.Should().NotBeNull();
+        createdEntity!.DisplayName.Should().Be("MV Sentinel");
+        result.Should().NotBeNull();
+        result!.DisplayName.Should().Be("MV Sentinel");
+    }
+
+    [Fact]
+    public async Task CacheHit_DisplayName_FlowsThroughPipeline()
+    {
+        var entityId = Guid.NewGuid();
+        _redisDb.Setup(db => db.StringGetAsync("correlation:link:AIS:777888999", It.IsAny<CommandFlags>()))
+            .ReturnsAsync((RedisValue)entityId.ToString());
+
+        var processor = new CorrelationProcessor(_entityRepo.Object, _redisDb.Object,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<CorrelationProcessor>.Instance);
+
+        var msg = new ObservationPublishedMessage(5, DateTimeOffset.UtcNow, "AIS", "777888999", -1.0, 50.0, 180.0, 5.0, "HMS Example");
+
+        var result = await processor.ProcessAsync(msg);
+
+        result.Should().NotBeNull();
+        result!.DisplayName.Should().Be("HMS Example");
+    }
 }
