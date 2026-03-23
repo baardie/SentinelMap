@@ -45,6 +45,8 @@ public class TrackHubService : BackgroundService
                 status = evt.Status,
                 timestamp = evt.Timestamp,
                 displayName = evt.DisplayName,
+                vesselType = evt.VesselType,
+                aircraftType = evt.AircraftType,
             };
 
             try

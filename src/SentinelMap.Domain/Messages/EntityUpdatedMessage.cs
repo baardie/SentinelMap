@@ -13,4 +13,6 @@ public record EntityUpdatedMessage(
     string EntityType,
     string Status,
     DateTimeOffset Timestamp,
-    string? DisplayName = null);
+    string? DisplayName = null,
+    string? VesselType = null,
+    string? AircraftType = null);

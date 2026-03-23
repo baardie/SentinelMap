@@ -13,4 +13,6 @@ public record ObservationPublishedMessage(
     double Latitude,
     double? Heading,
     double? SpeedMps,
-    string? DisplayName = null);
+    string? DisplayName = null,
+    string? VesselType = null,
+    string? AircraftType = null);

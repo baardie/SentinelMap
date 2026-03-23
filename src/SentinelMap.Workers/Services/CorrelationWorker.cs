@@ -43,7 +43,8 @@ public class CorrelationProcessor
             _logger.LogDebug("Hot-path hit for {Source}:{ExternalId} → entity {EntityId}", msg.SourceType, msg.ExternalId, entityId);
 
             return new EntityUpdatedMessage(entityId, msg.Longitude, msg.Latitude, msg.Heading, msg.SpeedMps,
-                entityType.ToString(), EntityStatus.Active.ToString(), msg.ObservedAt, msg.DisplayName);
+                entityType.ToString(), EntityStatus.Active.ToString(), msg.ObservedAt, msg.DisplayName,
+                msg.VesselType, msg.AircraftType);
         }
 
         // Cold path: new identifier — create entity
@@ -76,7 +77,8 @@ public class CorrelationProcessor
         _logger.LogInformation("Created entity {EntityId} for {Source}:{ExternalId}", entity.Id, msg.SourceType, msg.ExternalId);
 
         return new EntityUpdatedMessage(entity.Id, msg.Longitude, msg.Latitude, msg.Heading, msg.SpeedMps,
-            entityType.ToString(), EntityStatus.Active.ToString(), msg.ObservedAt, msg.DisplayName);
+            entityType.ToString(), EntityStatus.Active.ToString(), msg.ObservedAt, msg.DisplayName,
+            msg.VesselType, msg.AircraftType);
     }
 }
 

@@ -18,12 +18,16 @@ public class RedisObservationPublisher : IObservationPublisher
     public async Task PublishAsync(Observation observation, CancellationToken ct = default)
     {
         string? displayName = null;
+        string? vesselType = null;
+        string? aircraftType = null;
         if (!string.IsNullOrEmpty(observation.RawData))
         {
             try
             {
                 var rawNode = System.Text.Json.Nodes.JsonNode.Parse(observation.RawData);
                 displayName = rawNode?["displayName"]?.GetValue<string>();
+                vesselType = rawNode?["vesselType"]?.GetValue<string>();
+                aircraftType = rawNode?["aircraftType"]?.GetValue<string>();
             }
             catch { }
         }
@@ -37,7 +41,9 @@ public class RedisObservationPublisher : IObservationPublisher
             Latitude: observation.Position?.Y ?? 0,
             Heading: observation.Heading,
             SpeedMps: observation.SpeedMps,
-            DisplayName: displayName);
+            DisplayName: displayName,
+            VesselType: vesselType,
+            AircraftType: aircraftType);
 
         var json = JsonSerializer.Serialize(message);
         var channel = RedisChannel.Literal($"observations:{observation.SourceType}");

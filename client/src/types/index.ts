@@ -19,6 +19,8 @@ export interface TrackUpdate {
   status: EntityStatus
   timestamp: string
   displayName: string | null
+  vesselType: string | null
+  aircraftType: string | null
 }
 
 export interface TrackProperties {

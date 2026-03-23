@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { HubConnectionBuilder, LogLevel } from '@microsoft/signalr'
-import type { TrackUpdate, TrackFeature, TrackProperties, AlertNotification } from '../types'
+import type { TrackUpdate, TrackFeature, TrackProperties, AlertNotification, VesselType, AircraftType } from '../types'
 
 function trackUpdateToFeature(update: TrackUpdate): TrackFeature {
   return {
@@ -15,8 +15,8 @@ function trackUpdateToFeature(update: TrackUpdate): TrackFeature {
       speed: update.speed,
       entityType: update.entityType,
       status: update.status,
-      vesselType: 'Unknown',
-      aircraftType: 'Unknown',
+      vesselType: (update.vesselType as VesselType) ?? 'Unknown',
+      aircraftType: (update.aircraftType as AircraftType) ?? 'Unknown',
       displayName: update.displayName ?? '',
       lastUpdated: update.timestamp,
     } satisfies TrackProperties,
