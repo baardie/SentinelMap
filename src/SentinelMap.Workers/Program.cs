@@ -49,6 +49,7 @@ builder.Services.AddTransient<ICorrelationRule, SpatioTemporalRule>();
 builder.Services.AddTransient<IAlertRule, GeofenceBreachRule>();
 builder.Services.AddTransient<IAlertRule, WatchlistMatchRule>();
 builder.Services.AddTransient<IAlertRule, SpeedAnomalyRule>();
+builder.Services.AddTransient<IAlertRule, TransponderSwapRule>();
 
 // --- HttpClient (required for live ADS-B connector) ---
 builder.Services.AddHttpClient();

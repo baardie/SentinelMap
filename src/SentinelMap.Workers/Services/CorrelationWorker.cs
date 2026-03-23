@@ -23,17 +23,20 @@ public class CorrelationProcessor
     private readonly IEntityRepository _entityRepo;
     private readonly IDatabase _db;
     private readonly IEnumerable<ICorrelationRule> _correlationRules;
+    private readonly IAlertRepository _alertRepo;
     private readonly ILogger<CorrelationProcessor> _logger;
 
     public CorrelationProcessor(
         IEntityRepository entityRepo,
         IDatabase db,
         IEnumerable<ICorrelationRule> correlationRules,
+        IAlertRepository alertRepo,
         ILogger<CorrelationProcessor> logger)
     {
         _entityRepo = entityRepo;
         _db = db;
         _correlationRules = correlationRules;
+        _alertRepo = alertRepo;
         _logger = logger;
     }
 
@@ -98,6 +101,43 @@ public class CorrelationProcessor
                     IdentifierValue = msg.ExternalId,
                     Source = msg.SourceType,
                 });
+
+                // Publish a CorrelationLink alert — a new data source has been linked to this entity
+                var linkAlert = new Alert
+                {
+                    Type = AlertType.CorrelationLink,
+                    Severity = AlertSeverity.Low,
+                    EntityId = matchedEntity.Id,
+                    Summary = $"New identifier {msg.ExternalId} ({msg.SourceType}) linked to entity {matchedEntity.DisplayName ?? matchedEntity.Id.ToString()}",
+                    Details = System.Text.Json.JsonSerializer.Serialize(new
+                    {
+                        message = $"Correlated via rule '{bestRuleId}' with confidence {bestConfidence:F2}",
+                        externalId = msg.ExternalId,
+                        source = msg.SourceType,
+                        ruleId = bestRuleId,
+                        confidence = bestConfidence
+                    }),
+                    Status = AlertStatus.Triggered,
+                    CreatedAt = DateTimeOffset.UtcNow
+                };
+
+                await _alertRepo.AddAsync(linkAlert, ct);
+
+                var linkAlertMsg = new AlertTriggeredMessage(
+                    AlertId: linkAlert.Id,
+                    Type: linkAlert.Type.ToString(),
+                    Severity: linkAlert.Severity.ToString(),
+                    EntityId: linkAlert.EntityId,
+                    Summary: linkAlert.Summary,
+                    CreatedAt: linkAlert.CreatedAt);
+
+                await _db.Multiplexer.GetSubscriber().PublishAsync(
+                    RedisChannel.Literal("alerts:triggered"),
+                    System.Text.Json.JsonSerializer.Serialize(linkAlertMsg));
+
+                _logger.LogInformation(
+                    "CorrelationLink alert {AlertId} published for entity {EntityId} new identifier {ExternalId}",
+                    linkAlert.Id, matchedEntity.Id, msg.ExternalId);
             }
 
             matchedEntity.LastKnownPosition = position;
@@ -190,7 +230,8 @@ public class CorrelationWorker : BackgroundService
                 var entityRepo = scope.ServiceProvider.GetRequiredService<IEntityRepository>();
                 var db = _redis.GetDatabase();
                 var correlationRules = scope.ServiceProvider.GetServices<ICorrelationRule>();
-                var processor = new CorrelationProcessor(entityRepo, db, correlationRules,
+                var alertRepo = scope.ServiceProvider.GetRequiredService<IAlertRepository>();
+                var processor = new CorrelationProcessor(entityRepo, db, correlationRules, alertRepo,
                     scope.ServiceProvider.GetRequiredService<ILogger<CorrelationProcessor>>());
 
                 var entityUpdate = await processor.ProcessAsync(msg, stoppingToken);

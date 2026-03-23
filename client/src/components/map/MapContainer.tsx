@@ -14,6 +14,7 @@ import { MapIntelligenceLayer } from './MapIntelligenceLayer'
 import { StructurePlacer } from './StructurePlacer'
 import { StructureConfigPanel } from './StructureConfigPanel'
 import { LayerControlPanel } from './LayerControlPanel'
+import { ExportButton } from './ExportButton'
 import { apiFetch } from '../../lib/api'
 import type { TrackFeature, TrackProperties, GeofenceData, MapFeatureData } from '../../types'
 
@@ -384,6 +385,11 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
               <LayerControlPanel visibility={layerVisibility} onChange={handleLayerChange} />
             </div>
           )}
+
+          {/* Export */}
+          <div className="mt-1">
+            <ExportButton />
+          </div>
         </div>
       </div>
     )

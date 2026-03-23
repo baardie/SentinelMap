@@ -15,6 +15,7 @@ public class CorrelationWorkerTests
 {
     private readonly Mock<IEntityRepository> _entityRepo = new();
     private readonly Mock<IDatabase> _redisDb = new();
+    private readonly Mock<IAlertRepository> _alertRepo = new();
     private readonly IEnumerable<ICorrelationRule> _noRules = [];
 
     public CorrelationWorkerTests()
@@ -32,7 +33,7 @@ public class CorrelationWorkerTests
         _redisDb.Setup(db => db.StringGetAsync("correlation:link:AIS:235009888", It.IsAny<CommandFlags>()))
             .ReturnsAsync((RedisValue)entityId.ToString());
 
-        var processor = new CorrelationProcessor(_entityRepo.Object, _redisDb.Object, _noRules,
+        var processor = new CorrelationProcessor(_entityRepo.Object, _redisDb.Object, _noRules, _alertRepo.Object,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<CorrelationProcessor>.Instance);
 
         var msg = new ObservationPublishedMessage(1, DateTimeOffset.UtcNow, "AIS", "235009888", -1.5, 51.0, 90.0, 6.17);
@@ -52,7 +53,7 @@ public class CorrelationWorkerTests
         _entityRepo.Setup(r => r.AddAsync(It.IsAny<TrackedEntity>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((TrackedEntity e, CancellationToken _) => e);
 
-        var processor = new CorrelationProcessor(_entityRepo.Object, _redisDb.Object, _noRules,
+        var processor = new CorrelationProcessor(_entityRepo.Object, _redisDb.Object, _noRules, _alertRepo.Object,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<CorrelationProcessor>.Instance);
 
         var msg = new ObservationPublishedMessage(2, DateTimeOffset.UtcNow, "AIS", "999999999", 1.0, 51.0, null, null);
@@ -80,7 +81,7 @@ public class CorrelationWorkerTests
             .Callback<TrackedEntity, CancellationToken>((e, _) => createdEntity = e)
             .ReturnsAsync((TrackedEntity e, CancellationToken _) => e);
 
-        var processor = new CorrelationProcessor(_entityRepo.Object, _redisDb.Object, _noRules,
+        var processor = new CorrelationProcessor(_entityRepo.Object, _redisDb.Object, _noRules, _alertRepo.Object,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<CorrelationProcessor>.Instance);
 
         var msg = new ObservationPublishedMessage(3, DateTimeOffset.UtcNow, "ADSB", "A1B2C3", -0.5, 51.5, 270.0, 250.0);
@@ -104,7 +105,7 @@ public class CorrelationWorkerTests
             .Callback<TrackedEntity, CancellationToken>((e, _) => createdEntity = e)
             .ReturnsAsync((TrackedEntity e, CancellationToken _) => e);
 
-        var processor = new CorrelationProcessor(_entityRepo.Object, _redisDb.Object, _noRules,
+        var processor = new CorrelationProcessor(_entityRepo.Object, _redisDb.Object, _noRules, _alertRepo.Object,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<CorrelationProcessor>.Instance);
 
         var msg = new ObservationPublishedMessage(4, DateTimeOffset.UtcNow, "AIS", "112233445", 2.0, 52.0, null, null, "MV Sentinel");
@@ -124,7 +125,7 @@ public class CorrelationWorkerTests
         _redisDb.Setup(db => db.StringGetAsync("correlation:link:AIS:777888999", It.IsAny<CommandFlags>()))
             .ReturnsAsync((RedisValue)entityId.ToString());
 
-        var processor = new CorrelationProcessor(_entityRepo.Object, _redisDb.Object, _noRules,
+        var processor = new CorrelationProcessor(_entityRepo.Object, _redisDb.Object, _noRules, _alertRepo.Object,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<CorrelationProcessor>.Instance);
 
         var msg = new ObservationPublishedMessage(5, DateTimeOffset.UtcNow, "AIS", "777888999", -1.0, 50.0, 180.0, 5.0, "HMS Example");
