@@ -22,7 +22,7 @@ public static class UserSeeder
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
         var db = scope.ServiceProvider.GetRequiredService<SentinelMapDbContext>();
 
-        var password = Environment.GetEnvironmentVariable("SENTINELMAP_SEED_PASSWORD") ?? "Demo123!";
+        var password = Environment.GetEnvironmentVariable("SENTINELMAP_SEED_PASSWORD") ?? "SentinelDemo123!";
 
         // Ensure roles exist
         foreach (var role in new[] { Roles.Admin, Roles.Analyst, Roles.Viewer })
@@ -44,7 +44,13 @@ public static class UserSeeder
             };
 
             var result = await userManager.CreateAsync(identityUser, password);
-            if (!result.Succeeded) continue;
+            if (!result.Succeeded)
+            {
+                var logger = scope.ServiceProvider.GetRequiredService<ILogger<AppIdentityUser>>();
+                logger.LogWarning("Failed to seed user {Email}: {Errors}", email,
+                    string.Join(", ", result.Errors.Select(e => e.Description)));
+                continue;
+            }
 
             await userManager.AddToRoleAsync(identityUser, role);
 
