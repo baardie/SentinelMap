@@ -9,6 +9,7 @@ import { MapContainer } from '@/components/map/MapContainer'
 import { AlertFeed } from '@/components/alerts/AlertFeed'
 import { useTrackHub } from '@/hooks/useTrackHub'
 import { LoginPage } from '@/pages/LoginPage'
+import { SessionsPage } from '@/pages/SessionsPage'
 import { apiFetch } from '@/lib/api'
 import type { MapContainerHandle } from '@/components/map/MapContainer'
 import type { GeofenceData, MapFeatureData } from '@/types'
@@ -33,6 +34,7 @@ function CopLayout() {
   const [searchTerm, setSearchTerm] = useState('')
   const [geofences, setGeofences] = useState<GeofenceData[]>([])
   const [mapFeatures, setMapFeatures] = useState<MapFeatureData[]>([])
+  const [showSessions, setShowSessions] = useState(false)
 
   const loadGeofences = useCallback(() => {
     if (!isAuthenticated) return
@@ -72,7 +74,7 @@ function CopLayout() {
   return (
     <div className="flex h-screen flex-col bg-slate-950 text-slate-100">
       <ClassificationBanner />
-      <TopBar searchTerm={searchTerm} onSearch={setSearchTerm} />
+      <TopBar searchTerm={searchTerm} onSearch={setSearchTerm} onShowSessions={() => setShowSessions(true)} />
       <main className="flex-1 overflow-hidden">
         <MapContainer
           ref={mapRef}
@@ -92,6 +94,7 @@ function CopLayout() {
         alertCount={alerts.length}
         connectionStatus={connectionStatus}
       />
+      {showSessions && <SessionsPage onClose={() => setShowSessions(false)} />}
     </div>
   )
 }

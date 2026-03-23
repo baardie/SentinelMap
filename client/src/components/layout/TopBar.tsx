@@ -3,9 +3,10 @@ import { useAuth } from '@/contexts/AuthContext'
 interface TopBarProps {
   searchTerm: string
   onSearch: (term: string) => void
+  onShowSessions?: () => void
 }
 
-export function TopBar({ searchTerm, onSearch }: TopBarProps) {
+export function TopBar({ searchTerm, onSearch, onShowSessions }: TopBarProps) {
   const { user, logout } = useAuth()
 
   return (
@@ -30,6 +31,14 @@ export function TopBar({ searchTerm, onSearch }: TopBarProps) {
             >
               {user.role.toUpperCase()}
             </span>
+            {onShowSessions && (
+              <button
+                onClick={onShowSessions}
+                className="text-xs font-mono text-slate-400 hover:text-slate-200 uppercase tracking-widest transition-colors"
+              >
+                SESSIONS
+              </button>
+            )}
             <button
               onClick={() => void logout()}
               className="font-mono text-xs text-slate-400 hover:text-red-400 transition-colors"
