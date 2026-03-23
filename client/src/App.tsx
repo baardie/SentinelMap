@@ -9,7 +9,7 @@ import { useTrackHub } from '@/hooks/useTrackHub'
 import { LoginPage } from '@/pages/LoginPage'
 import { apiFetch } from '@/lib/api'
 import type { MapContainerHandle } from '@/components/map/MapContainer'
-import type { GeofenceData } from '@/types'
+import type { GeofenceData, MapFeatureData } from '@/types'
 
 function LoadingScreen() {
   return (
@@ -30,6 +30,7 @@ function CopLayout() {
   const mapRef = useRef<MapContainerHandle>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [geofences, setGeofences] = useState<GeofenceData[]>([])
+  const [mapFeatures, setMapFeatures] = useState<MapFeatureData[]>([])
 
   const loadGeofences = useCallback(() => {
     if (!isAuthenticated) return
@@ -39,9 +40,18 @@ function CopLayout() {
       .catch(() => {})
   }, [isAuthenticated])
 
+  const loadMapFeatures = useCallback(() => {
+    if (!isAuthenticated) return
+    apiFetch('/api/v1/map-features').then(r => r.json()).then(setMapFeatures).catch(() => {})
+  }, [isAuthenticated])
+
   useEffect(() => {
     loadGeofences()
   }, [loadGeofences])
+
+  useEffect(() => {
+    loadMapFeatures()
+  }, [loadMapFeatures])
 
   const filteredTracks = searchTerm
     ? tracks.filter(t =>
@@ -68,6 +78,8 @@ function CopLayout() {
           trackHistory={trackHistory}
           geofences={geofences}
           onGeofenceCreated={loadGeofences}
+          mapFeatures={mapFeatures}
+          onMapFeatureCreated={loadMapFeatures}
         />
       </main>
       <AlertFeed alerts={alerts} onAlertClick={handleAlertClick} />

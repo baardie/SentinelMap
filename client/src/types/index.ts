@@ -55,3 +55,16 @@ export interface GeofenceData {
   isActive: boolean
   color?: string
 }
+
+export interface MapFeatureData {
+  id: string
+  featureType: string
+  name: string
+  longitude: number
+  latitude: number
+  icon: string | null
+  color: string | null
+  details: string | null
+  source: string
+  isActive: boolean
+}

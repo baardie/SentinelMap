@@ -10,8 +10,12 @@ import { TrackHistoryLayer } from './TrackHistoryLayer'
 import { EntityDetailPanel } from './EntityDetailPanel'
 import { GeofenceDrawer } from './GeofenceDrawer'
 import { GeofenceConfigPanel } from './GeofenceConfigPanel'
+import { MapIntelligenceLayer } from './MapIntelligenceLayer'
+import { StructurePlacer } from './StructurePlacer'
+import { StructureConfigPanel } from './StructureConfigPanel'
+import { LayerControlPanel } from './LayerControlPanel'
 import { apiFetch } from '../../lib/api'
-import type { TrackFeature, TrackProperties, GeofenceData } from '../../types'
+import type { TrackFeature, TrackProperties, GeofenceData, MapFeatureData } from '../../types'
 
 const protocol = new Protocol()
 maplibregl.addProtocol('pmtiles', protocol.tile)
@@ -43,16 +47,31 @@ interface MapContainerProps {
   trackHistory: Map<string, [number, number][]>
   geofences?: GeofenceData[]
   onGeofenceCreated?: () => void
+  mapFeatures?: MapFeatureData[]
+  onMapFeatureCreated?: () => void
 }
 
 export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
-  function MapContainer({ tracks, trackHistory, geofences = [], onGeofenceCreated }, ref) {
+  function MapContainer({ tracks, trackHistory, geofences = [], onGeofenceCreated, mapFeatures = [], onMapFeatureCreated }, ref) {
     const mapContainerRef = useRef<HTMLDivElement>(null)
     const [map, setMap] = useState<maplibregl.Map | null>(null)
     const [selectedEntity, setSelectedEntity] = useState<TrackProperties | null>(null)
-    const [trailsVisible, setTrailsVisible] = useState(true)
     const [drawMode, setDrawMode] = useState<'polygon' | 'circle' | null>(null)
     const [editingGeofence, setEditingGeofence] = useState<{ id: string; name: string; fenceType: string; color: string } | null>(null)
+    const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({
+      vessels: true,
+      aircraft: true,
+      trails: false,
+      geofences: true,
+      baseStations: true,
+      aidsToNav: false,
+      airports: true,
+      military: true,
+      structures: true,
+    })
+    const [layerPanelOpen, setLayerPanelOpen] = useState(false)
+    const [placingStructure, setPlacingStructure] = useState(false)
+    const [structurePosition, setStructurePosition] = useState<[number, number] | null>(null)
     const mapRef = useRef<maplibregl.Map | null>(null)
     const tracksRef = useRef<TrackFeature[]>(tracks)
 
@@ -129,6 +148,20 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
       }
     }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+    // Sync vessel layer visibility
+    useEffect(() => {
+      if (!map) return
+      if (!map.getLayer('maritime-track-symbols')) return
+      map.setLayoutProperty('maritime-track-symbols', 'visibility', layerVisibility.vessels ? 'visible' : 'none')
+    }, [map, layerVisibility.vessels])
+
+    // Sync aircraft layer visibility
+    useEffect(() => {
+      if (!map) return
+      if (!map.getLayer('aviation-track-symbols')) return
+      map.setLayoutProperty('aviation-track-symbols', 'visibility', layerVisibility.aircraft ? 'visible' : 'none')
+    }, [map, layerVisibility.aircraft])
+
     const handleDrawComplete = useCallback(async (
       geometry: number[][],
       name: string,
@@ -157,6 +190,50 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
       setDrawMode(null)
     }, [])
 
+    const handleStructurePlace = useCallback((lng: number, lat: number) => {
+      setPlacingStructure(false)
+      setStructurePosition([lng, lat])
+    }, [])
+
+    const handleStructurePlaceCancel = useCallback(() => {
+      setPlacingStructure(false)
+      setStructurePosition(null)
+    }, [])
+
+    const handleStructureSave = useCallback(async (
+      name: string,
+      featureType: string,
+      color: string,
+      details: string,
+    ) => {
+      if (!structurePosition) return
+      const [lng, lat] = structurePosition
+
+      try {
+        await apiFetch('/api/v1/map-features', {
+          method: 'POST',
+          body: JSON.stringify({
+            name,
+            featureType: 'CustomStructure',
+            longitude: lng,
+            latitude: lat,
+            color,
+            details: `${featureType}${details ? ': ' + details : ''}`,
+            source: 'UserPlaced',
+          }),
+        })
+        onMapFeatureCreated?.()
+      } catch {
+        // Silently handle — in production this would show an error toast
+      }
+
+      setStructurePosition(null)
+    }, [structurePosition, onMapFeatureCreated])
+
+    const handleLayerChange = useCallback((layer: string, visible: boolean) => {
+      setLayerVisibility(prev => ({ ...prev, [layer]: visible }))
+    }, [])
+
     return (
       <div ref={mapContainerRef} className="h-full w-full relative">
         {map && (
@@ -164,18 +241,33 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
             map={map}
             trackHistory={trackHistory}
             tracks={tracks}
-            visible={trailsVisible}
+            visible={layerVisibility.trails}
           />
         )}
         {map && <MaritimeTrackLayer map={map} tracks={tracks} />}
         {map && <AviationTrackLayer map={map} tracks={tracks} />}
-        {map && <GeofenceLayer map={map} geofences={geofences} />}
+        {map && layerVisibility.geofences && <GeofenceLayer map={map} geofences={geofences} />}
+        {map && (
+          <MapIntelligenceLayer
+            map={map}
+            features={mapFeatures}
+            layerVisibility={layerVisibility}
+          />
+        )}
         {map && (
           <GeofenceDrawer
             map={map}
             mode={drawMode}
             onComplete={handleDrawComplete}
             onCancel={handleDrawCancel}
+          />
+        )}
+        {map && (
+          <StructurePlacer
+            map={map}
+            active={placingStructure}
+            onPlace={handleStructurePlace}
+            onCancel={handleStructurePlaceCancel}
           />
         )}
         {editingGeofence && (
@@ -209,6 +301,13 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
             }}
           />
         )}
+        {structurePosition && (
+          <StructureConfigPanel
+            position={structurePosition}
+            onSave={handleStructureSave}
+            onCancel={() => setStructurePosition(null)}
+          />
+        )}
         {selectedEntity && (
           <EntityDetailPanel
             entity={selectedEntity}
@@ -217,48 +316,74 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
               setDrawMode('circle')
               setSelectedEntity(null)
             }}
-            onToggleTrails={() => setTrailsVisible(v => !v)}
+            onToggleTrails={() => setLayerVisibility(prev => ({ ...prev, trails: !prev.trails }))}
           />
         )}
-        {/* Trails toggle button */}
-        <button
-          onClick={() => setTrailsVisible(v => !v)}
-          title={trailsVisible ? 'Hide Trails' : 'Show Trails'}
-          className={`absolute top-3 left-3 z-10 px-2 py-1 font-mono text-xs tracking-widest border transition-colors ${
-            trailsVisible
-              ? 'bg-slate-700 border-slate-500 text-slate-200'
-              : 'bg-slate-900 border-slate-700 text-slate-500'
-          }`}
-          style={{ borderRadius: '2px' }}
-        >
-          TRAILS
-        </button>
-        {/* Draw mode toolbar */}
-        <div className="absolute top-10 left-3 z-10 flex flex-col gap-1 mt-2">
+
+        {/* Toolbar */}
+        <div className="absolute top-3 left-3 z-10 flex flex-col gap-1">
+          {/* LAYERS toggle */}
           <button
-            onClick={() => setDrawMode(drawMode === 'polygon' ? null : 'polygon')}
-            title="Draw polygon geofence"
+            onClick={() => setLayerPanelOpen(v => !v)}
             className={`px-2 py-1 font-mono text-xs tracking-widest border transition-colors ${
-              drawMode === 'polygon'
-                ? 'bg-slate-600 border-slate-400 text-slate-100'
+              layerPanelOpen
+                ? 'bg-slate-700 border-slate-500 text-slate-200'
                 : 'bg-slate-900 border-slate-700 text-slate-500 hover:text-slate-300'
             }`}
             style={{ borderRadius: '2px' }}
           >
-            POLYGON
+            LAYERS
           </button>
-          <button
-            onClick={() => setDrawMode(drawMode === 'circle' ? null : 'circle')}
-            title="Draw circle geofence"
-            className={`px-2 py-1 font-mono text-xs tracking-widest border transition-colors ${
-              drawMode === 'circle'
-                ? 'bg-slate-600 border-slate-400 text-slate-100'
-                : 'bg-slate-900 border-slate-700 text-slate-500 hover:text-slate-300'
-            }`}
-            style={{ borderRadius: '2px' }}
-          >
-            CIRCLE
-          </button>
+
+          {/* Geofence draw buttons */}
+          <div className="flex flex-col gap-1 mt-1">
+            <button
+              onClick={() => setDrawMode(drawMode === 'polygon' ? null : 'polygon')}
+              title="Draw polygon geofence"
+              className={`px-2 py-1 font-mono text-xs tracking-widest border transition-colors ${
+                drawMode === 'polygon'
+                  ? 'bg-slate-600 border-slate-400 text-slate-100'
+                  : 'bg-slate-900 border-slate-700 text-slate-500 hover:text-slate-300'
+              }`}
+              style={{ borderRadius: '2px' }}
+            >
+              POLYGON
+            </button>
+            <button
+              onClick={() => setDrawMode(drawMode === 'circle' ? null : 'circle')}
+              title="Draw circle geofence"
+              className={`px-2 py-1 font-mono text-xs tracking-widest border transition-colors ${
+                drawMode === 'circle'
+                  ? 'bg-slate-600 border-slate-400 text-slate-100'
+                  : 'bg-slate-900 border-slate-700 text-slate-500 hover:text-slate-300'
+              }`}
+              style={{ borderRadius: '2px' }}
+            >
+              CIRCLE
+            </button>
+            <button
+              onClick={() => {
+                setPlacingStructure(true)
+                setStructurePosition(null)
+              }}
+              title="Place a custom structure"
+              className={`px-2 py-1 font-mono text-xs tracking-widest border transition-colors ${
+                placingStructure
+                  ? 'bg-slate-600 border-slate-400 text-slate-100'
+                  : 'bg-slate-900 border-slate-700 text-slate-500 hover:text-slate-300'
+              }`}
+              style={{ borderRadius: '2px' }}
+            >
+              ADD STRUCTURE
+            </button>
+          </div>
+
+          {/* Layer control panel (inline below LAYERS button) */}
+          {layerPanelOpen && (
+            <div className="mt-1">
+              <LayerControlPanel visibility={layerVisibility} onChange={handleLayerChange} />
+            </div>
+          )}
         </div>
       </div>
     )
