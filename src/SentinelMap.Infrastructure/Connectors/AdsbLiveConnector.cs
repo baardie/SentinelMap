@@ -67,6 +67,13 @@ public class AdsbLiveConnector : ISourceConnector
             {
                 yield break;
             }
+            catch (HttpRequestException ex) when (ex.Message.Contains("429"))
+            {
+                _logger.LogWarning("ADS-B rate limited (429), backing off 30s");
+                aircraftJsonList = new List<string>();
+                try { await Task.Delay(30000, ct); } catch (OperationCanceledException) { yield break; }
+                continue;
+            }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "ADS-B poll failed for {Url}; will retry in {Interval}ms", url, _pollIntervalMs);

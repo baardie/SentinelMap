@@ -91,7 +91,8 @@ builder.Services.AddSingleton<ISourceConnector>(sp =>
         var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
         var httpClient = httpClientFactory.CreateClient();
         return new AdsbLiveConnector(httpClient, 53.38, -3.02, 50,
-            sp.GetRequiredService<ILogger<AdsbLiveConnector>>());
+            sp.GetRequiredService<ILogger<AdsbLiveConnector>>(),
+            pollIntervalMs: 10000);  // 10s to avoid 429 rate limiting
     }
     return new SimulatedAdsbConnector();
 });
