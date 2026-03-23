@@ -6,9 +6,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using SentinelMap.Api.Endpoints;
 using SentinelMap.Api.Hubs;
+using SentinelMap.Domain.Interfaces;
 using SentinelMap.Infrastructure.Auth;
 using SentinelMap.Infrastructure.Data;
 using SentinelMap.Infrastructure.Identity;
+using SentinelMap.Infrastructure.Repositories;
 using SentinelMap.Infrastructure.Services;
 using SentinelMap.SharedKernel.Interfaces;
 using StackExchange.Redis;
@@ -20,6 +22,12 @@ builder.Services.AddDbContext<SentinelMapDbContext>(options =>
     options.UseNpgsql(
         builder.Configuration.GetConnectionString("DefaultConnection"),
         npgsql => npgsql.UseNetTopologySuite()));
+
+builder.Services.AddDbContext<SystemDbContext>(options =>
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        npgsql => npgsql.UseNetTopologySuite()),
+    ServiceLifetime.Transient);
 
 // --- Identity ---
 builder.Services.AddIdentityCore<AppIdentityUser>(options =>
@@ -110,6 +118,12 @@ builder.Services.AddSignalR()
 
 // --- TrackHubService ---
 builder.Services.AddHostedService<TrackHubService>();
+builder.Services.AddHostedService<AlertHubService>();
+
+// --- Repositories ---
+builder.Services.AddTransient<IGeofenceRepository, GeofenceRepository>();
+builder.Services.AddTransient<IWatchlistRepository, WatchlistRepository>();
+builder.Services.AddTransient<IAlertRepository, AlertRepository>();
 
 // --- Swagger ---
 builder.Services.AddEndpointsApiExplorer();
@@ -162,6 +176,9 @@ if (app.Environment.IsDevelopment())
 // --- Endpoints ---
 app.MapHealthEndpoints();
 app.MapAuthEndpoints();
+app.MapGeofenceEndpoints();
+app.MapWatchlistEndpoints();
+app.MapAlertEndpoints();
 app.MapHub<TrackHub>("/hubs/tracks");
 
 await SentinelMap.Api.Services.UserSeeder.SeedAsync(app.Services);
