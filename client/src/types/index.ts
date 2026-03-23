@@ -56,6 +56,20 @@ export interface GeofenceData {
   color?: string
 }
 
+export interface CorrelationReview {
+  id: string
+  sourceEntityId: string
+  sourceName: string | null
+  sourceType: string | null
+  targetEntityId: string
+  targetName: string | null
+  targetType: string | null
+  confidence: number
+  ruleScores: string | null
+  status: string
+  createdAt: string
+}
+
 export interface MapFeatureData {
   id: string
   featureType: string

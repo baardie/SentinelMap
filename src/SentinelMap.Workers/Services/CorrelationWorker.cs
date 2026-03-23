@@ -7,6 +7,7 @@ using SentinelMap.Domain.Entities;
 using SentinelMap.Domain.Interfaces;
 using SentinelMap.Domain.Messages;
 using SentinelMap.Infrastructure.Correlation;
+using SentinelMap.Infrastructure.Data;
 using SentinelMap.SharedKernel.Enums;
 using StackExchange.Redis;
 
@@ -18,12 +19,14 @@ namespace SentinelMap.Workers.Services;
 public class CorrelationProcessor
 {
     private static readonly TimeSpan CacheTtl = TimeSpan.FromDays(7);
-    private const double MinConfidenceThreshold = 0.6;
+    private const double AutoMergeThreshold = 0.6;
+    private const double ReviewThreshold = 0.3;
 
     private readonly IEntityRepository _entityRepo;
     private readonly IDatabase _db;
     private readonly IEnumerable<ICorrelationRule> _correlationRules;
     private readonly IAlertRepository _alertRepo;
+    private readonly SystemDbContext? _systemDb;
     private readonly ILogger<CorrelationProcessor> _logger;
 
     public CorrelationProcessor(
@@ -31,13 +34,15 @@ public class CorrelationProcessor
         IDatabase db,
         IEnumerable<ICorrelationRule> correlationRules,
         IAlertRepository alertRepo,
-        ILogger<CorrelationProcessor> logger)
+        ILogger<CorrelationProcessor> logger,
+        SystemDbContext? systemDb = null)
     {
         _entityRepo = entityRepo;
         _db = db;
         _correlationRules = correlationRules;
         _alertRepo = alertRepo;
         _logger = logger;
+        _systemDb = systemDb;
     }
 
     public async Task<EntityUpdatedMessage?> ProcessAsync(ObservationPublishedMessage msg, CancellationToken ct = default)
@@ -70,22 +75,27 @@ public class CorrelationProcessor
         TrackedEntity? matchedEntity = null;
         double bestConfidence = 0;
         string? bestRuleId = null;
+        var allScores = new List<CorrelationScore>();
 
         foreach (var candidate in candidates)
         {
             foreach (var rule in _correlationRules)
             {
                 var score = await rule.EvaluateAsync(msg.SourceType, msg.ExternalId, msg.DisplayName, position, candidate, ct);
-                if (score != null && score.Confidence > bestConfidence)
+                if (score != null)
                 {
-                    bestConfidence = score.Confidence;
-                    matchedEntity = candidate;
-                    bestRuleId = score.RuleId;
+                    allScores.Add(score);
+                    if (score.Confidence > bestConfidence)
+                    {
+                        bestConfidence = score.Confidence;
+                        matchedEntity = candidate;
+                        bestRuleId = score.RuleId;
+                    }
                 }
             }
         }
 
-        if (matchedEntity != null && bestConfidence > MinConfidenceThreshold)
+        if (matchedEntity != null && bestConfidence > AutoMergeThreshold)
         {
             // Link to existing entity — add new identifier and update position
             var identifierType = msg.SourceType == "ADSB" ? "ICAO" : "MMSI";
@@ -154,6 +164,51 @@ public class CorrelationProcessor
                 msg.SourceType, msg.ExternalId, matchedEntity.Id, bestRuleId, bestConfidence);
 
             return new EntityUpdatedMessage(matchedEntity.Id, msg.Longitude, msg.Latitude, msg.Heading, msg.SpeedMps,
+                entityType.ToString(), EntityStatus.Active.ToString(), msg.ObservedAt, msg.DisplayName,
+                msg.VesselType, msg.AircraftType);
+        }
+
+        if (matchedEntity != null && bestConfidence >= ReviewThreshold && _systemDb != null)
+        {
+            // Mid-confidence match — create review for analyst and still create new entity
+            var newEntity = new TrackedEntity
+            {
+                Type = entityType,
+                DisplayName = msg.DisplayName,
+                LastKnownPosition = position,
+                LastSpeedMps = msg.SpeedMps,
+                LastHeading = msg.Heading,
+                LastSeen = msg.ObservedAt,
+                Status = EntityStatus.Active,
+            };
+
+            var newIdentifierTypeReview = msg.SourceType == "ADSB" ? "ICAO" : "MMSI";
+            newEntity.Identifiers.Add(new EntityIdentifier
+            {
+                EntityId = newEntity.Id,
+                IdentifierType = newIdentifierTypeReview,
+                IdentifierValue = msg.ExternalId,
+                Source = msg.SourceType,
+            });
+
+            await _entityRepo.AddAsync(newEntity, ct);
+            await _db.StringSetAsync(cacheKey, newEntity.Id.ToString(), CacheTtl, When.Always, CommandFlags.None);
+
+            var review = new CorrelationReview
+            {
+                SourceEntityId = newEntity.Id,
+                TargetEntityId = matchedEntity.Id,
+                Confidence = bestConfidence,
+                RuleScores = JsonSerializer.Serialize(allScores),
+            };
+            _systemDb.CorrelationReviews.Add(review);
+            await _systemDb.SaveChangesAsync(ct);
+
+            _logger.LogInformation(
+                "Created review {ReviewId} for potential correlation: {Source}:{ExternalId} → entity {EntityId} (confidence {Confidence:F2})",
+                review.Id, msg.SourceType, msg.ExternalId, matchedEntity.Id, bestConfidence);
+
+            return new EntityUpdatedMessage(newEntity.Id, msg.Longitude, msg.Latitude, msg.Heading, msg.SpeedMps,
                 entityType.ToString(), EntityStatus.Active.ToString(), msg.ObservedAt, msg.DisplayName,
                 msg.VesselType, msg.AircraftType);
         }
@@ -231,8 +286,9 @@ public class CorrelationWorker : BackgroundService
                 var db = _redis.GetDatabase();
                 var correlationRules = scope.ServiceProvider.GetServices<ICorrelationRule>();
                 var alertRepo = scope.ServiceProvider.GetRequiredService<IAlertRepository>();
+                var systemDb = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
                 var processor = new CorrelationProcessor(entityRepo, db, correlationRules, alertRepo,
-                    scope.ServiceProvider.GetRequiredService<ILogger<CorrelationProcessor>>());
+                    scope.ServiceProvider.GetRequiredService<ILogger<CorrelationProcessor>>(), systemDb);
 
                 var entityUpdate = await processor.ProcessAsync(msg, stoppingToken);
                 if (entityUpdate is null) return;

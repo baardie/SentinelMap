@@ -1,4 +1,6 @@
+import { useCallback, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { CorrelationReviewPanel } from '@/components/correlation/CorrelationReviewPanel'
 
 interface TopBarProps {
   searchTerm: string
@@ -8,9 +10,15 @@ interface TopBarProps {
 
 export function TopBar({ searchTerm, onSearch, onShowSessions }: TopBarProps) {
   const { user, logout } = useAuth()
+  const [reviewPanelOpen, setReviewPanelOpen] = useState(false)
+  const [pendingCount, setPendingCount] = useState(0)
+
+  const handleCountChange = useCallback((count: number) => {
+    setPendingCount(count)
+  }, [])
 
   return (
-    <div className="flex h-10 items-center justify-between border-b border-slate-800 bg-slate-900 px-4">
+    <div className="relative flex h-10 items-center justify-between border-b border-slate-800 bg-slate-900 px-4">
       <div className="flex items-center gap-4">
         <input
           type="text"
@@ -24,6 +32,17 @@ export function TopBar({ searchTerm, onSearch, onShowSessions }: TopBarProps) {
       <div className="flex items-center gap-4">
         {user && (
           <>
+            <button
+              onClick={() => setReviewPanelOpen(!reviewPanelOpen)}
+              className="relative font-mono text-xs text-slate-400 hover:text-amber-300 uppercase tracking-widest transition-colors"
+            >
+              REVIEW
+              {pendingCount > 0 && (
+                <span className="ml-1 inline-block font-mono text-[10px] font-bold bg-amber-600 text-slate-900 px-1.5 py-0.5 min-w-[1.25rem] text-center">
+                  {pendingCount}
+                </span>
+              )}
+            </button>
             <span className="font-mono text-xs text-slate-400">{user.email}</span>
             <span
               className="font-mono text-xs font-bold text-slate-300 bg-slate-700 px-2 py-0.5"
@@ -48,6 +67,11 @@ export function TopBar({ searchTerm, onSearch, onShowSessions }: TopBarProps) {
           </>
         )}
       </div>
+      <CorrelationReviewPanel
+        isOpen={reviewPanelOpen}
+        onClose={() => setReviewPanelOpen(false)}
+        onCountChange={handleCountChange}
+      />
     </div>
   )
 }

@@ -241,6 +241,7 @@ app.MapAdminEndpoints();
 app.MapWebhookEndpoints();
 app.MapSessionEndpoints();
 app.MapSystemEndpoints();
+app.MapCorrelationEndpoints();
 app.MapHub<TrackHub>("/hubs/tracks");
 
 await SentinelMap.Api.Services.UserSeeder.SeedAsync(app.Services);
