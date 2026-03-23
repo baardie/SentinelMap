@@ -52,10 +52,12 @@ var globalMode = (builder.Configuration["SENTINELMAP_DATA_MODE"]
               ?? Environment.GetEnvironmentVariable("SENTINELMAP_DATA_MODE")
               ?? "Simulated").ToLowerInvariant();
 
-string ResolveMode(string sourceEnvVar) =>
-    (Environment.GetEnvironmentVariable(sourceEnvVar)
-     ?? builder.Configuration[sourceEnvVar])?.ToLowerInvariant()
-    ?? globalMode;
+string ResolveMode(string sourceEnvVar)
+{
+    var value = Environment.GetEnvironmentVariable(sourceEnvVar)
+             ?? builder.Configuration[sourceEnvVar];
+    return string.IsNullOrEmpty(value) ? globalMode : value.ToLowerInvariant();
+}
 
 var aisMode = ResolveMode("SENTINELMAP_AIS_MODE");
 var adsbMode = ResolveMode("SENTINELMAP_ADSB_MODE");

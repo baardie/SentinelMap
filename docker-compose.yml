@@ -37,6 +37,8 @@ services:
     environment:
       ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=sentinelmap;Username=sentinel;Password=sentinel_dev_password"
       ConnectionStrings__Redis: "redis:6379"
+      SENTINELMAP_DATA_MODE: "${SENTINELMAP_DATA_MODE:-Simulated}"
+      SENTINELMAP_SEED_PASSWORD: "${SENTINELMAP_SEED_PASSWORD:-SentinelDemo123!}"
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:5000/health || exit 1"]
       interval: 10s
@@ -56,8 +58,12 @@ services:
     environment:
       ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=sentinelmap;Username=sentinel;Password=sentinel_dev_password"
       ConnectionStrings__Redis: "redis:6379"
-      SENTINELMAP_DATA_MODE: "Simulated"
-      AIS_DARK_TIMEOUT_SECONDS: "30"
+      SENTINELMAP_DATA_MODE: "${SENTINELMAP_DATA_MODE:-Simulated}"
+      SENTINELMAP_AIS_MODE: "${SENTINELMAP_AIS_MODE:-}"
+      SENTINELMAP_ADSB_MODE: "${SENTINELMAP_ADSB_MODE:-}"
+      AISSTREAM_API_KEY: "${AISSTREAM_API_KEY:-}"
+      AIS_DARK_TIMEOUT_SECONDS: "${AIS_DARK_TIMEOUT_SECONDS:-30}"
+      SENTINELMAP_SEED_PASSWORD: "${SENTINELMAP_SEED_PASSWORD:-SentinelDemo123!}"
     networks:
       - sentinel
 
