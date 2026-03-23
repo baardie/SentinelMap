@@ -7,6 +7,8 @@ const FILL_LAYER_ID = 'geofence-fill'
 const LINE_LAYER_ID = 'geofence-line'
 const LABEL_LAYER_ID = 'geofence-label'
 
+const DEFAULT_COLOR = '#f59e0b'
+
 interface GeofenceLayerProps {
   map: maplibregl.Map
   geofences: GeofenceData[]
@@ -22,31 +24,31 @@ export function GeofenceLayer({ map, geofences }: GeofenceLayerProps) {
       data: { type: 'FeatureCollection', features: [] },
     })
 
-    // Amber fill at low opacity
+    // Fill using per-feature colour
     map.addLayer({
       id: FILL_LAYER_ID,
       type: 'fill',
       source: SOURCE_ID,
       paint: {
-        'fill-color': '#f59e0b',
+        'fill-color': ['coalesce', ['get', 'color'], DEFAULT_COLOR],
         'fill-opacity': 0.08,
       },
     })
 
-    // Amber dashed outline
+    // Dashed outline using per-feature colour
     map.addLayer({
       id: LINE_LAYER_ID,
       type: 'line',
       source: SOURCE_ID,
       paint: {
-        'line-color': '#f59e0b',
+        'line-color': ['coalesce', ['get', 'color'], DEFAULT_COLOR],
         'line-opacity': 0.6,
         'line-width': 2,
         'line-dasharray': [4, 4],
       },
     })
 
-    // Geofence name label
+    // Geofence name label using per-feature colour
     map.addLayer({
       id: LABEL_LAYER_ID,
       type: 'symbol',
@@ -58,7 +60,7 @@ export function GeofenceLayer({ map, geofences }: GeofenceLayerProps) {
         'text-anchor': 'center',
       },
       paint: {
-        'text-color': '#f59e0b',
+        'text-color': ['coalesce', ['get', 'color'], DEFAULT_COLOR],
         'text-halo-color': '#0f172a',
         'text-halo-width': 1,
       },
@@ -91,6 +93,7 @@ export function GeofenceLayer({ map, geofences }: GeofenceLayerProps) {
           id: g.id,
           name: g.name,
           fenceType: g.fenceType,
+          color: g.color || DEFAULT_COLOR,
         },
       })),
     })

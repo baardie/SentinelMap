@@ -53,4 +53,5 @@ export interface GeofenceData {
   coordinates: number[][]
   fenceType: string
   isActive: boolean
+  color?: string
 }

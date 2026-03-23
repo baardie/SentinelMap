@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 import { ClassificationBanner } from '@/components/layout/ClassificationBanner'
 import { TopBar } from '@/components/layout/TopBar'
@@ -7,7 +7,9 @@ import { MapContainer } from '@/components/map/MapContainer'
 import { AlertFeed } from '@/components/alerts/AlertFeed'
 import { useTrackHub } from '@/hooks/useTrackHub'
 import { LoginPage } from '@/pages/LoginPage'
+import { apiFetch } from '@/lib/api'
 import type { MapContainerHandle } from '@/components/map/MapContainer'
+import type { GeofenceData } from '@/types'
 
 function LoadingScreen() {
   return (
@@ -23,9 +25,23 @@ function LoadingScreen() {
 }
 
 function CopLayout() {
+  const { isAuthenticated } = useAuth()
   const { tracks, alerts, trackHistory, connectionStatus } = useTrackHub()
   const mapRef = useRef<MapContainerHandle>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [geofences, setGeofences] = useState<GeofenceData[]>([])
+
+  const loadGeofences = useCallback(() => {
+    if (!isAuthenticated) return
+    apiFetch('/api/v1/geofences')
+      .then(r => r.json())
+      .then(setGeofences)
+      .catch(() => {})
+  }, [isAuthenticated])
+
+  useEffect(() => {
+    loadGeofences()
+  }, [loadGeofences])
 
   const filteredTracks = searchTerm
     ? tracks.filter(t =>
@@ -46,7 +62,13 @@ function CopLayout() {
       <ClassificationBanner />
       <TopBar searchTerm={searchTerm} onSearch={setSearchTerm} />
       <main className="flex-1 overflow-hidden">
-        <MapContainer ref={mapRef} tracks={filteredTracks} trackHistory={trackHistory} />
+        <MapContainer
+          ref={mapRef}
+          tracks={filteredTracks}
+          trackHistory={trackHistory}
+          geofences={geofences}
+          onGeofenceCreated={loadGeofences}
+        />
       </main>
       <AlertFeed alerts={alerts} onAlertClick={handleAlertClick} />
       <StatusBar

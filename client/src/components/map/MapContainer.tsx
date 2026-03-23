@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react'
+import { useEffect, useRef, useState, forwardRef, useImperativeHandle, useCallback } from 'react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { Protocol } from 'pmtiles'
@@ -8,6 +8,8 @@ import { AviationTrackLayer } from './AviationTrackLayer'
 import { GeofenceLayer } from './GeofenceLayer'
 import { TrackHistoryLayer } from './TrackHistoryLayer'
 import { EntityDetailPanel } from './EntityDetailPanel'
+import { GeofenceDrawer } from './GeofenceDrawer'
+import { apiFetch } from '../../lib/api'
 import type { TrackFeature, TrackProperties, GeofenceData } from '../../types'
 
 const protocol = new Protocol()
@@ -39,14 +41,16 @@ interface MapContainerProps {
   tracks: TrackFeature[]
   trackHistory: Map<string, [number, number][]>
   geofences?: GeofenceData[]
+  onGeofenceCreated?: () => void
 }
 
 export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
-  function MapContainer({ tracks, trackHistory, geofences = [] }, ref) {
+  function MapContainer({ tracks, trackHistory, geofences = [], onGeofenceCreated }, ref) {
     const mapContainerRef = useRef<HTMLDivElement>(null)
     const [map, setMap] = useState<maplibregl.Map | null>(null)
     const [selectedEntity, setSelectedEntity] = useState<TrackProperties | null>(null)
     const [trailsVisible, setTrailsVisible] = useState(true)
+    const [drawMode, setDrawMode] = useState<'polygon' | 'circle' | null>(null)
     const mapRef = useRef<maplibregl.Map | null>(null)
     const tracksRef = useRef<TrackFeature[]>(tracks)
 
@@ -106,6 +110,34 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
       }
     }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+    const handleDrawComplete = useCallback(async (
+      geometry: number[][],
+      name: string,
+      color: string,
+      fenceType: string,
+    ) => {
+      setDrawMode(null)
+
+      try {
+        await apiFetch('/api/v1/geofences', {
+          method: 'POST',
+          body: JSON.stringify({
+            name,
+            coordinates: geometry,
+            fenceType,
+            color,
+          }),
+        })
+        onGeofenceCreated?.()
+      } catch {
+        // Silently handle — in production this would show an error toast
+      }
+    }, [onGeofenceCreated])
+
+    const handleDrawCancel = useCallback(() => {
+      setDrawMode(null)
+    }, [])
+
     return (
       <div ref={mapContainerRef} className="h-full w-full relative">
         {map && (
@@ -119,6 +151,14 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
         {map && <MaritimeTrackLayer map={map} tracks={tracks} />}
         {map && <AviationTrackLayer map={map} tracks={tracks} />}
         {map && <GeofenceLayer map={map} geofences={geofences} />}
+        {map && (
+          <GeofenceDrawer
+            map={map}
+            mode={drawMode}
+            onComplete={handleDrawComplete}
+            onCancel={handleDrawCancel}
+          />
+        )}
         {selectedEntity && (
           <EntityDetailPanel entity={selectedEntity} onClose={() => setSelectedEntity(null)} />
         )}
@@ -135,6 +175,33 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
         >
           TRAILS
         </button>
+        {/* Draw mode toolbar */}
+        <div className="absolute top-10 left-3 z-10 flex flex-col gap-1 mt-2">
+          <button
+            onClick={() => setDrawMode(drawMode === 'polygon' ? null : 'polygon')}
+            title="Draw polygon geofence"
+            className={`px-2 py-1 font-mono text-xs tracking-widest border transition-colors ${
+              drawMode === 'polygon'
+                ? 'bg-slate-600 border-slate-400 text-slate-100'
+                : 'bg-slate-900 border-slate-700 text-slate-500 hover:text-slate-300'
+            }`}
+            style={{ borderRadius: '2px' }}
+          >
+            POLYGON
+          </button>
+          <button
+            onClick={() => setDrawMode(drawMode === 'circle' ? null : 'circle')}
+            title="Draw circle geofence"
+            className={`px-2 py-1 font-mono text-xs tracking-widest border transition-colors ${
+              drawMode === 'circle'
+                ? 'bg-slate-600 border-slate-400 text-slate-100'
+                : 'bg-slate-900 border-slate-700 text-slate-500 hover:text-slate-300'
+            }`}
+            style={{ borderRadius: '2px' }}
+          >
+            CIRCLE
+          </button>
+        </div>
       </div>
     )
   }
