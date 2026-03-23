@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SentinelMap.Domain.Interfaces;
+using SentinelMap.Infrastructure.Alerting;
 using SentinelMap.Infrastructure.Connectors;
 using SentinelMap.Infrastructure.Data;
 using SentinelMap.Infrastructure.Pipeline;
@@ -28,6 +29,20 @@ builder.Services.AddSingleton<IDeduplicationService, RedisDeduplicationService>(
 builder.Services.AddSingleton<IObservationPublisher, RedisObservationPublisher>();
 builder.Services.AddSingleton<ObservationValidator>();
 builder.Services.AddTransient<IngestionPipeline>();
+
+// --- Redis IDatabase (shared singleton, thread-safe) ---
+builder.Services.AddSingleton<IDatabase>(sp =>
+    sp.GetRequiredService<IConnectionMultiplexer>().GetDatabase());
+
+// --- Alert repositories ---
+builder.Services.AddTransient<IAlertRepository, AlertRepository>();
+builder.Services.AddTransient<IGeofenceRepository, GeofenceRepository>();
+builder.Services.AddTransient<IWatchlistRepository, WatchlistRepository>();
+
+// --- Alert rules (resolved via IEnumerable<IAlertRule>) ---
+builder.Services.AddTransient<IAlertRule, GeofenceBreachRule>();
+builder.Services.AddTransient<IAlertRule, WatchlistMatchRule>();
+builder.Services.AddTransient<IAlertRule, SpeedAnomalyRule>();
 
 // --- HttpClient (required for live ADS-B connector) ---
 builder.Services.AddHttpClient();
@@ -78,6 +93,7 @@ builder.Services.AddHostedService(sp =>
         sp.GetRequiredService<ILogger<IngestionWorker>>());
 });
 builder.Services.AddHostedService<CorrelationWorker>();
+builder.Services.AddHostedService<AlertingWorker>();
 
 var host = builder.Build();
 host.Run();

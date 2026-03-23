@@ -3,6 +3,7 @@ using NetTopologySuite.Geometries;
 using SentinelMap.Domain.Entities;
 using SentinelMap.Domain.Interfaces;
 using SentinelMap.Infrastructure.Data;
+using SentinelMap.SharedKernel.Enums;
 
 namespace SentinelMap.Infrastructure.Repositories;
 
@@ -52,5 +53,16 @@ public class EntityRepository : IEntityRepository
               WHERE id = {5}",
             parameters,
             ct);
+    }
+
+    public async Task<List<TrackedEntity>> FindStaleVesselsAsync(TimeSpan darkTimeout, CancellationToken ct = default)
+    {
+        var cutoff = DateTimeOffset.UtcNow - darkTimeout;
+        return await _db.Entities
+            .Where(e => e.Type == EntityType.Vessel
+                      && e.Status == EntityStatus.Active
+                      && e.LastSeen != null
+                      && e.LastSeen < cutoff)
+            .ToListAsync(ct);
     }
 }
