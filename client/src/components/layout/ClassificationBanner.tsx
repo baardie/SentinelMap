@@ -1,12 +1,13 @@
+import { useContext } from 'react'
 import { theme } from '@/styles/theme'
+import { AuthContext } from '@/contexts/AuthContext'
 
 type ClassificationLevel = 'official' | 'officialSensitive' | 'secret'
 
-interface ClassificationBannerProps {
-  level: ClassificationLevel
-}
-
-export function ClassificationBanner({ level }: ClassificationBannerProps) {
+export function ClassificationBanner() {
+  // AuthContext may be null if rendered outside AuthProvider (shouldn't happen, but be safe)
+  const auth = useContext(AuthContext)
+  const level: ClassificationLevel = auth?.user?.clearance ?? 'official'
   const config = theme.classification[level]
 
   return (
