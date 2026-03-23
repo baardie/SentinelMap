@@ -8,6 +8,8 @@ export type EntityStatus = 'Active' | 'Stale' | 'Dark' | 'Lost'
 
 export type VesselType = 'Cargo' | 'Tanker' | 'Passenger' | 'Fishing' | 'Unknown'
 
+export type AircraftType = 'Commercial' | 'Cargo' | 'Private' | 'Military' | 'Helicopter' | 'Unknown'
+
 export interface TrackUpdate {
   entityId: string
   position: [number, number]
@@ -16,6 +18,7 @@ export interface TrackUpdate {
   entityType: EntityType
   status: EntityStatus
   timestamp: string
+  displayName: string | null
 }
 
 export interface TrackProperties {
@@ -25,6 +28,7 @@ export interface TrackProperties {
   entityType: EntityType
   status: EntityStatus
   vesselType: VesselType
+  aircraftType: AircraftType
   displayName: string
   lastUpdated: string
 }

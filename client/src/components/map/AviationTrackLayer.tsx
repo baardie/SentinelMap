@@ -1,26 +1,18 @@
 import { useEffect, useRef } from 'react'
 import maplibregl from 'maplibre-gl'
 import type { TrackFeature } from '../../types'
-import { VESSEL_ICON_DATA_URL } from './icons/vessel'
+import { AIRCRAFT_ICON_DATA_URL } from './icons/aircraft'
 
-const SOURCE_ID = 'maritime-tracks'
-const LAYER_ID = 'maritime-track-symbols'
-const ICON_ID = 'vessel-icon'
+const SOURCE_ID = 'aviation-tracks'
+const LAYER_ID = 'aviation-track-symbols'
+const ICON_ID = 'aircraft-icon'
 
-const TYPE_COLOURS: Record<string, string> = {
-  Cargo: '#94a3b8',
-  Tanker: '#f59e0b',
-  Passenger: '#2dd4bf',
-  Fishing: '#a3e635',
-  Unknown: '#64748b',
-}
-
-interface MaritimeTrackLayerProps {
+interface AviationTrackLayerProps {
   map: maplibregl.Map
   tracks: TrackFeature[]
 }
 
-export function MaritimeTrackLayer({ map, tracks }: MaritimeTrackLayerProps) {
+export function AviationTrackLayer({ map, tracks }: AviationTrackLayerProps) {
   const iconLoaded = useRef(false)
 
   useEffect(() => {
@@ -36,7 +28,7 @@ export function MaritimeTrackLayer({ map, tracks }: MaritimeTrackLayerProps) {
         iconLoaded.current = true
       }
     }
-    img.src = VESSEL_ICON_DATA_URL
+    img.src = AIRCRAFT_ICON_DATA_URL
   }, [map])
 
   useEffect(() => {
@@ -53,7 +45,7 @@ export function MaritimeTrackLayer({ map, tracks }: MaritimeTrackLayerProps) {
       source: SOURCE_ID,
       layout: {
         'icon-image': ICON_ID,
-        'icon-size': 0.8,
+        'icon-size': 0.7,
         'icon-rotate': ['get', 'heading'],
         'icon-rotation-alignment': 'map',
         'icon-allow-overlap': true,
@@ -64,20 +56,13 @@ export function MaritimeTrackLayer({ map, tracks }: MaritimeTrackLayerProps) {
         'text-optional': true,
       },
       paint: {
-        'icon-color': [
-          'match', ['get', 'vesselType'],
-          'Cargo', TYPE_COLOURS.Cargo,
-          'Tanker', TYPE_COLOURS.Tanker,
-          'Passenger', TYPE_COLOURS.Passenger,
-          'Fishing', TYPE_COLOURS.Fishing,
-          TYPE_COLOURS.Unknown,
-        ],
+        'icon-color': '#0ea5e9',
         'icon-opacity': [
           'case',
           ['==', ['get', 'status'], 'Dark'], 0.3,
           1.0,
         ],
-        'text-color': '#94a3b8',
+        'text-color': '#0ea5e9',
         'text-halo-color': '#0f172a',
         'text-halo-width': 1,
       },
@@ -93,11 +78,11 @@ export function MaritimeTrackLayer({ map, tracks }: MaritimeTrackLayerProps) {
     const source = map.getSource(SOURCE_ID) as maplibregl.GeoJSONSource | undefined
     if (!source) return
 
-    const vesselTracks = tracks.filter(t => t.properties.entityType === 'Vessel')
+    const aircraftTracks = tracks.filter(t => t.properties.entityType === 'Aircraft')
 
     source.setData({
       type: 'FeatureCollection',
-      features: vesselTracks,
+      features: aircraftTracks,
     })
   }, [map, tracks])
 

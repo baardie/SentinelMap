@@ -16,7 +16,8 @@ function trackUpdateToFeature(update: TrackUpdate): TrackFeature {
       entityType: update.entityType,
       status: update.status,
       vesselType: 'Unknown',
-      displayName: '',
+      aircraftType: 'Unknown',
+      displayName: update.displayName ?? '',
       lastUpdated: update.timestamp,
     } satisfies TrackProperties,
   }

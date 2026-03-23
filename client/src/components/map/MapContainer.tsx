@@ -4,7 +4,10 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import { Protocol } from 'pmtiles'
 import { layers, namedTheme } from 'protomaps-themes-base'
 import { MaritimeTrackLayer } from './MaritimeTrackLayer'
+import { AviationTrackLayer } from './AviationTrackLayer'
+import { EntityDetailPanel } from './EntityDetailPanel'
 import { useTrackHub } from '../../hooks/useTrackHub'
+import type { TrackProperties } from '../../types'
 
 const protocol = new Protocol()
 maplibregl.addProtocol('pmtiles', protocol.tile)
@@ -30,6 +33,7 @@ function buildMapStyle(): maplibregl.StyleSpecification {
 export function MapContainer() {
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const [map, setMap] = useState<maplibregl.Map | null>(null)
+  const [selectedEntity, setSelectedEntity] = useState<TrackProperties | null>(null)
   const tracks = useTrackHub()
 
   useEffect(() => {
@@ -45,6 +49,21 @@ export function MapContainer() {
     m.addControl(new maplibregl.NavigationControl(), 'bottom-right')
 
     m.on('load', () => {
+      m.on('click', 'maritime-track-symbols', (e) => {
+        if (e.features?.[0]) {
+          setSelectedEntity(e.features[0].properties as unknown as TrackProperties)
+        }
+      })
+      m.on('click', 'aviation-track-symbols', (e) => {
+        if (e.features?.[0]) {
+          setSelectedEntity(e.features[0].properties as unknown as TrackProperties)
+        }
+      })
+      m.on('mouseenter', 'maritime-track-symbols', () => { m.getCanvas().style.cursor = 'pointer' })
+      m.on('mouseleave', 'maritime-track-symbols', () => { m.getCanvas().style.cursor = '' })
+      m.on('mouseenter', 'aviation-track-symbols', () => { m.getCanvas().style.cursor = 'pointer' })
+      m.on('mouseleave', 'aviation-track-symbols', () => { m.getCanvas().style.cursor = '' })
+
       setMap(m)
     })
 
@@ -55,8 +74,12 @@ export function MapContainer() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div ref={mapContainerRef} className="h-full w-full">
+    <div ref={mapContainerRef} className="h-full w-full relative">
       {map && <MaritimeTrackLayer map={map} tracks={tracks} />}
+      {map && <AviationTrackLayer map={map} tracks={tracks} />}
+      {selectedEntity && (
+        <EntityDetailPanel entity={selectedEntity} onClose={() => setSelectedEntity(null)} />
+      )}
     </div>
   )
 }
