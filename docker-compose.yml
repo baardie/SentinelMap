@@ -57,6 +57,7 @@ services:
       ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=sentinelmap;Username=sentinel;Password=sentinel_dev_password"
       ConnectionStrings__Redis: "redis:6379"
       SENTINELMAP_DATA_MODE: "Simulated"
+      AIS_DARK_TIMEOUT_SECONDS: "30"
     networks:
       - sentinel
 

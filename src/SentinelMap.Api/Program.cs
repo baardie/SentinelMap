@@ -239,6 +239,12 @@ app.MapHub<TrackHub>("/hubs/tracks");
 
 await SentinelMap.Api.Services.UserSeeder.SeedAsync(app.Services);
 
+var dataMode = (Environment.GetEnvironmentVariable("SENTINELMAP_DATA_MODE") ?? "Simulated").ToLowerInvariant();
+if (dataMode != "live")
+{
+    await SentinelMap.Api.Services.DemoSeeder.SeedAsync(app.Services);
+}
+
 app.Run();
 
 // Make Program class accessible for WebApplicationFactory in tests

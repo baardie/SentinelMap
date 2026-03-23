@@ -234,21 +234,52 @@ public class SimulatedAisConnector : ISourceConnector
                         break;
                 }
 
-                yield return new Observation
+                // ── AIS dark period (MERSEY TRADER only, index 0) ──────────────
+                // When MERSEY TRADER approaches the end of its inbound transit
+                // (Seaforth terminal), it goes dark for ~17 ticks (~35s at 2s interval).
+                // The vessel reappears once the dark period expires.
+                bool suppressObservation = false;
+                if (i == 0 && vessel.Behaviour == VesselBehaviour.Transit)
                 {
-                    SourceType = "AIS",
-                    ExternalId = vessel.Mmsi,
-                    Position = new Point(lon, lat) { SRID = 4326 },
-                    Heading = heading,
-                    SpeedMps = speedMps,
-                    ObservedAt = DateTimeOffset.UtcNow,
-                    RawData = JsonSerializer.Serialize(new
+                    if (s.DarkTicksRemaining > 0)
                     {
-                        displayName = vessel.Name,
-                        vesselType = vessel.VesselType,
-                        behaviour = vessel.Behaviour.ToString(),
-                    }),
-                };
+                        // Currently dark — skip emission and count down
+                        s.DarkTicksRemaining--;
+                        suppressObservation = true;
+                    }
+                    else if (!s.HasGoneDark && s.Position >= vessel.Waypoints.Length - 1.5)
+                    {
+                        // Vessel has reached Seaforth — trigger dark period
+                        s.DarkTicksRemaining = 17;
+                        s.HasGoneDark = true;
+                        suppressObservation = true;
+                    }
+
+                    // Reset the flag when the vessel starts a new forward pass
+                    if (s.Forward && s.Position < 1.0)
+                    {
+                        s.HasGoneDark = false;
+                    }
+                }
+
+                if (!suppressObservation)
+                {
+                    yield return new Observation
+                    {
+                        SourceType = "AIS",
+                        ExternalId = vessel.Mmsi,
+                        Position = new Point(lon, lat) { SRID = 4326 },
+                        Heading = heading,
+                        SpeedMps = speedMps,
+                        ObservedAt = DateTimeOffset.UtcNow,
+                        RawData = JsonSerializer.Serialize(new
+                        {
+                            displayName = vessel.Name,
+                            vesselType = vessel.VesselType,
+                            behaviour = vessel.Behaviour.ToString(),
+                        }),
+                    };
+                }
 
                 // Stagger emissions: small random delay between each vessel
                 if (i < Vessels.Length - 1)
@@ -369,5 +400,7 @@ public class SimulatedAisConnector : ISourceConnector
         public double AnchorCentreLon;
         public double AnchorCentreLat;
         public double AnchorHeading;
+        public int DarkTicksRemaining;
+        public bool HasGoneDark;
     }
 }
