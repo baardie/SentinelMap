@@ -10,6 +10,7 @@ const LAYERS = [
   { id: 'geofences', label: 'GEOFENCES', defaultOn: true },
   { id: 'baseStations', label: 'BASE STATIONS', defaultOn: true },
   { id: 'aidsToNav', label: 'AIDS TO NAV', defaultOn: false },
+  { id: 'airspace', label: 'AIRSPACE', defaultOn: true },
   { id: 'airports', label: 'AIRPORTS', defaultOn: true },
   { id: 'military', label: 'MILITARY', defaultOn: true },
   { id: 'structures', label: 'STRUCTURES', defaultOn: true },

@@ -15,6 +15,8 @@ public static class StaticFeatureSeeder
         // Skip if static features already exist
         if (await db.MapFeatures.AnyAsync(f => f.Source == "static")) return;
 
+        await SeedAirspaceZonesAsync(db);
+
         var features = new List<MapFeature>();
 
         // --- UK Airports ---
@@ -98,5 +100,70 @@ public static class StaticFeatureSeeder
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<MapFeature>>();
         logger.LogInformation("Static features seeded: {AirportCount} airports, {MilitaryCount} military bases",
             airports.Length, military.Length);
+    }
+
+    private static async Task SeedAirspaceZonesAsync(SystemDbContext db)
+    {
+        // Skip if airspace geofences already exist
+        if (await db.Geofences.AnyAsync(g => g.FenceType.StartsWith("Airspace-"))) return;
+
+        var factory = new GeometryFactory(new PrecisionModel(), 4326);
+        var zones = new List<Geofence>();
+
+        var airspaceData = new (string Name, string FenceType, string Color, (double Lon, double Lat)[] Coords)[]
+        {
+            ("LIVERPOOL CTR (CLASS D)", "Airspace-CTR", "#3b82f6", new[]
+            {
+                (-3.15, 53.28), (-2.55, 53.28), (-2.55, 53.45), (-3.15, 53.45), (-3.15, 53.28)
+            }),
+            ("MANCHESTER TMA (CLASS A)", "Airspace-CTR", "#3b82f6", new[]
+            {
+                (-2.55, 53.28), (-1.95, 53.28), (-1.95, 53.55), (-2.55, 53.55), (-2.55, 53.28)
+            }),
+            ("ATZ HAWARDEN", "Airspace-ATZ", "#60a5fa", new[]
+            {
+                (-3.05, 53.15), (-2.90, 53.15), (-2.90, 53.21), (-3.05, 53.21), (-3.05, 53.15)
+            }),
+            ("MATZ WOODVALE", "Airspace-MATZ", "#f97316", new[]
+            {
+                (-3.12, 53.54), (-2.99, 53.54), (-2.99, 53.62), (-3.12, 53.62), (-3.12, 53.54)
+            }),
+            ("D307 ALTCAR RANGES", "Airspace-Danger", "#ef4444", new[]
+            {
+                (-3.12, 53.50), (-3.02, 53.50), (-3.02, 53.56), (-3.12, 53.56), (-3.12, 53.50)
+            }),
+            ("D301 IRISH SEA", "Airspace-Danger", "#ef4444", new[]
+            {
+                (-4.50, 53.20), (-3.50, 53.20), (-3.50, 53.80), (-4.50, 53.80), (-4.50, 53.20)
+            }),
+            ("D406 BARROW/MORECAMBE BAY", "Airspace-Danger", "#ef4444", new[]
+            {
+                (-3.50, 53.90), (-2.80, 53.90), (-2.80, 54.20), (-3.50, 54.20), (-3.50, 53.90)
+            }),
+            ("P131 SELLAFIELD", "Airspace-Prohibited", "#dc2626", new[]
+            {
+                (-3.55, 54.38), (-3.40, 54.38), (-3.40, 54.45), (-3.55, 54.45), (-3.55, 54.38)
+            }),
+        };
+
+        foreach (var (name, fenceType, color, coords) in airspaceData)
+        {
+            var ring = new LinearRing(
+                coords.Select(c => new Coordinate(c.Lon, c.Lat)).ToArray());
+            var polygon = factory.CreatePolygon(ring);
+
+            zones.Add(new Geofence
+            {
+                Name = name,
+                Geometry = polygon,
+                FenceType = fenceType,
+                Color = color,
+                CreatedBy = Guid.Empty,
+                IsActive = true,
+            });
+        }
+
+        db.Geofences.AddRange(zones);
+        await db.SaveChangesAsync();
     }
 }

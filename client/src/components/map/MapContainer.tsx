@@ -69,6 +69,7 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
       aircraft: true,
       trails: false,
       geofences: true,
+      airspace: true,
       baseStations: true,
       aidsToNav: false,
       airports: true,
@@ -256,7 +257,9 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
         )}
         {map && <MaritimeTrackLayer map={map} tracks={tracks} />}
         {map && <AviationTrackLayer map={map} tracks={tracks} />}
-        {map && layerVisibility.geofences && <GeofenceLayer map={map} geofences={geofences} />}
+        {map && layerVisibility.geofences && (
+          <GeofenceLayer map={map} geofences={geofences} airspaceVisible={layerVisibility.airspace !== false} />
+        )}
         {map && (
           <MapIntelligenceLayer
             map={map}
