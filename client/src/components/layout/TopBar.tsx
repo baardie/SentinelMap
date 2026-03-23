@@ -21,8 +21,6 @@ export function TopBar({ searchTerm, onSearch }: TopBarProps) {
         />
       </div>
       <div className="flex items-center gap-4">
-        <span className="font-mono text-xs text-slate-500">Simulated</span>
-        <span className="text-sm text-slate-400">System Status</span>
         {user && (
           <>
             <span className="font-mono text-xs text-slate-400">{user.email}</span>

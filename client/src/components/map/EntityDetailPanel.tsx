@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { TrackProperties } from '../../types'
 import { apiFetch } from '../../lib/api'
+import { useToast } from '../../contexts/ToastContext'
 
 interface EntityDetailPanelProps {
   entity: TrackProperties
@@ -28,7 +29,9 @@ function statusColour(status: string): string {
 }
 
 export function EntityDetailPanel({ entity, onClose, onCreateGeofence, onToggleTrails }: EntityDetailPanelProps) {
+  const { showToast } = useToast()
   const [watchlistAdded, setWatchlistAdded] = useState(false)
+  const [watchlistLoading, setWatchlistLoading] = useState(false)
 
   const title = entity.entityType === 'Aircraft' ? 'Aircraft Detail' : 'Vessel Detail'
   const speedKnots =
@@ -37,6 +40,7 @@ export function EntityDetailPanel({ entity, onClose, onCreateGeofence, onToggleT
     entity.heading != null ? `${entity.heading.toFixed(1)}°` : '—'
 
   const handleAddToWatchlist = async () => {
+    setWatchlistLoading(true)
     try {
       // Get or create a default watchlist
       const res = await apiFetch('/api/v1/watchlists')
@@ -63,9 +67,12 @@ export function EntityDetailPanel({ entity, onClose, onCreateGeofence, onToggleT
       })
 
       setWatchlistAdded(true)
+      showToast('ADDED TO WATCHLIST', 'success')
       setTimeout(() => setWatchlistAdded(false), 2000)
     } catch (e) {
-      console.warn('Failed to add to watchlist:', e)
+      showToast('FAILED TO ADD TO WATCHLIST', 'error')
+    } finally {
+      setWatchlistLoading(false)
     }
   }
 
@@ -151,11 +158,14 @@ export function EntityDetailPanel({ entity, onClose, onCreateGeofence, onToggleT
       <div className="flex flex-col gap-2 px-4 py-3 border-t border-slate-700">
         <button
           onClick={handleAddToWatchlist}
-          className="w-full px-3 py-2 font-mono text-xs tracking-widest uppercase bg-slate-800 hover:bg-slate-700 border border-slate-600 transition-colors"
+          disabled={watchlistLoading || watchlistAdded}
+          className="w-full px-3 py-2 font-mono text-xs tracking-widest uppercase bg-slate-800 hover:bg-slate-700 border border-slate-600 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           style={{ borderRadius: '2px' }}
         >
           {watchlistAdded ? (
-            <span className="text-green-400">ADDED ✓</span>
+            <span className="text-green-400">ADDED</span>
+          ) : watchlistLoading ? (
+            <span className="text-slate-400">ADDING...</span>
           ) : (
             <span className="text-slate-200">ADD TO WATCHLIST</span>
           )}

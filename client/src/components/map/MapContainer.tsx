@@ -16,6 +16,7 @@ import { StructureConfigPanel } from './StructureConfigPanel'
 import { LayerControlPanel } from './LayerControlPanel'
 import { ExportButton } from './ExportButton'
 import { apiFetch } from '../../lib/api'
+import { useToast } from '../../contexts/ToastContext'
 import type { TrackFeature, TrackProperties, GeofenceData, MapFeatureData } from '../../types'
 
 const protocol = new Protocol()
@@ -54,6 +55,7 @@ interface MapContainerProps {
 
 export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
   function MapContainer({ tracks, trackHistory, geofences = [], onGeofenceCreated, mapFeatures = [], onMapFeatureCreated }, ref) {
+    const { showToast } = useToast()
     const mapContainerRef = useRef<HTMLDivElement>(null)
     const [map, setMap] = useState<maplibregl.Map | null>(null)
     const [selectedEntity, setSelectedEntity] = useState<TrackProperties | null>(null)
@@ -187,10 +189,11 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
           }),
         })
         onGeofenceCreated?.()
-      } catch {
-        // Silently handle — in production this would show an error toast
+        showToast('GEOFENCE CREATED', 'success')
+      } catch (err) {
+        showToast('FAILED TO CREATE GEOFENCE', 'error')
       }
-    }, [onGeofenceCreated])
+    }, [onGeofenceCreated, showToast])
 
     const handleDrawCancel = useCallback(() => {
       setDrawMode(null)
@@ -229,12 +232,13 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
           }),
         })
         onMapFeatureCreated?.()
-      } catch {
-        // Silently handle — in production this would show an error toast
+        showToast('STRUCTURE PLACED', 'success')
+      } catch (err) {
+        showToast('FAILED TO PLACE STRUCTURE', 'error')
       }
 
       setStructurePosition(null)
-    }, [structurePosition, onMapFeatureCreated])
+    }, [structurePosition, onMapFeatureCreated, showToast])
 
     const handleLayerChange = useCallback((layer: string, visible: boolean) => {
       setLayerVisibility(prev => ({ ...prev, [layer]: visible }))
@@ -291,8 +295,9 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
                 })
                 setEditingGeofence(null)
                 onGeofenceCreated?.()
-              } catch {
-                // Silently handle — in production this would show an error toast
+                showToast('GEOFENCE UPDATED', 'success')
+              } catch (err) {
+                showToast('FAILED TO UPDATE GEOFENCE', 'error')
               }
             }}
             onCancel={() => setEditingGeofence(null)}
@@ -301,8 +306,9 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
                 await apiFetch(`/api/v1/geofences/${editingGeofence.id}`, { method: 'DELETE' })
                 setEditingGeofence(null)
                 onGeofenceCreated?.()
-              } catch {
-                // Silently handle — in production this would show an error toast
+                showToast('GEOFENCE DELETED', 'success')
+              } catch (err) {
+                showToast('FAILED TO DELETE GEOFENCE', 'error')
               }
             }}
           />
