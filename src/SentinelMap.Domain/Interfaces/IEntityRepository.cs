@@ -10,4 +10,5 @@ public interface IEntityRepository
     Task UpdateAsync(TrackedEntity entity, CancellationToken ct = default);
     Task UpdatePositionAsync(Guid entityId, Point position, double? speedMps, double? heading, DateTimeOffset lastSeen, CancellationToken ct = default);
     Task<List<TrackedEntity>> FindStaleVesselsAsync(TimeSpan darkTimeout, CancellationToken ct = default);
+    Task<List<TrackedEntity>> FindCandidatesAsync(Point position, double radiusMetres, TimeSpan seenSince, CancellationToken ct = default);
 }

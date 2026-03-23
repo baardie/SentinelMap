@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using SentinelMap.Domain.Interfaces;
 using SentinelMap.Infrastructure.Alerting;
 using SentinelMap.Infrastructure.Connectors;
+using SentinelMap.Infrastructure.Correlation;
 using SentinelMap.Infrastructure.Data;
 using SentinelMap.Infrastructure.Pipeline;
 using SentinelMap.Infrastructure.Repositories;
@@ -38,6 +39,11 @@ builder.Services.AddSingleton<IDatabase>(sp =>
 builder.Services.AddTransient<IAlertRepository, AlertRepository>();
 builder.Services.AddTransient<IGeofenceRepository, GeofenceRepository>();
 builder.Services.AddTransient<IWatchlistRepository, WatchlistRepository>();
+
+// --- Correlation rules (resolved via IEnumerable<ICorrelationRule>) ---
+builder.Services.AddTransient<ICorrelationRule, DirectIdMatchRule>();
+builder.Services.AddTransient<ICorrelationRule, NameFuzzyMatchRule>();
+builder.Services.AddTransient<ICorrelationRule, SpatioTemporalRule>();
 
 // --- Alert rules (resolved via IEnumerable<IAlertRule>) ---
 builder.Services.AddTransient<IAlertRule, GeofenceBreachRule>();

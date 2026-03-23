@@ -67,4 +67,16 @@ public class EntityRepository : IEntityRepository
                       && e.LastSeen < cutoff)
             .ToListAsync(ct);
     }
+
+    public async Task<List<TrackedEntity>> FindCandidatesAsync(Point position, double radiusMetres, TimeSpan seenSince, CancellationToken ct = default)
+    {
+        var cutoff = DateTimeOffset.UtcNow - seenSince;
+        return await _db.Entities
+            .Include(e => e.Identifiers)
+            .Where(e => e.LastSeen != null && e.LastSeen > cutoff
+                      && e.LastKnownPosition != null
+                      && e.LastKnownPosition.IsWithinDistance(position, radiusMetres / 111_320.0))
+            .Take(50)
+            .ToListAsync(ct);
+    }
 }
