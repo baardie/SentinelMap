@@ -59,6 +59,9 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
     const [selectedEntity, setSelectedEntity] = useState<TrackProperties | null>(null)
     const [drawMode, setDrawMode] = useState<'polygon' | 'circle' | null>(null)
     const [editingGeofence, setEditingGeofence] = useState<{ id: string; name: string; fenceType: string; color: string } | null>(null)
+    // Refs for mode state — accessible from map click handlers (stale closure issue)
+    const drawModeRef = useRef(drawMode)
+    const placingStructureRef = useRef(false)
     const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({
       vessels: true,
       aircraft: true,
@@ -76,10 +79,10 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
     const mapRef = useRef<maplibregl.Map | null>(null)
     const tracksRef = useRef<TrackFeature[]>(tracks)
 
-    // Keep tracksRef current so flyToEntity closure can access latest tracks
-    useEffect(() => {
-      tracksRef.current = tracks
-    }, [tracks])
+    // Keep refs current so map click handlers can access latest state
+    useEffect(() => { tracksRef.current = tracks }, [tracks])
+    useEffect(() => { drawModeRef.current = drawMode }, [drawMode])
+    useEffect(() => { placingStructureRef.current = placingStructure }, [placingStructure])
 
     useImperativeHandle(ref, () => ({
       flyToEntity(entityId: string) {
@@ -108,11 +111,13 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
 
       m.on('load', () => {
         m.on('click', 'maritime-track-symbols', (e) => {
+          if (drawModeRef.current || placingStructureRef.current) return
           if (e.features?.[0]) {
             setSelectedEntity(e.features[0].properties as unknown as TrackProperties)
           }
         })
         m.on('click', 'aviation-track-symbols', (e) => {
+          if (drawModeRef.current || placingStructureRef.current) return
           if (e.features?.[0]) {
             setSelectedEntity(e.features[0].properties as unknown as TrackProperties)
           }
@@ -123,7 +128,7 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
         m.on('mouseleave', 'aviation-track-symbols', () => { m.getCanvas().style.cursor = '' })
 
         m.on('click', 'geofence-fill', (e) => {
-          if (drawMode) return
+          if (drawModeRef.current || placingStructureRef.current) return
           if (e.features?.[0]) {
             const trackFeatures = m.queryRenderedFeatures(e.point, { layers: ['maritime-track-symbols', 'aviation-track-symbols'] })
             if (trackFeatures.length > 0) return
