@@ -160,10 +160,18 @@ public class AlertingWorker : BackgroundService
 
         foreach (var vessel in staleVessels)
         {
+            // Debounce: skip if we already alerted for this vessel going dark
+            var debounceKey = $"alert:dark:debounce:{vessel.Id}";
+            var alreadyAlerted = await _redis.GetDatabase().KeyExistsAsync(debounceKey);
+            if (alreadyAlerted) continue;
+
             // Mark vessel as Dark
             vessel.Status = EntityStatus.Dark;
             vessel.UpdatedAt = DateTimeOffset.UtcNow;
             await entityRepo.UpdateAsync(vessel, ct);
+
+            // Set debounce key — expires when the vessel would need re-alerting (24h)
+            await _redis.GetDatabase().StringSetAsync(debounceKey, "1", TimeSpan.FromHours(24));
 
             // Create and persist AIS Dark alert
             var trigger = new AlertTrigger(
