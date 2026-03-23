@@ -135,6 +135,17 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<SentinelMapDbContext>();
     await db.Database.MigrateAsync();
+
+    // Ensure observation partitions exist for today and tomorrow
+    var today = DateTimeOffset.UtcNow.Date;
+    for (int i = 0; i < 2; i++)
+    {
+        var date = today.AddDays(i);
+        var next = date.AddDays(1);
+        var tableName = $"observations_{date:yyyy_MM_dd}";
+        var sql = $"CREATE TABLE IF NOT EXISTS {tableName} PARTITION OF observations FOR VALUES FROM ('{date:yyyy-MM-dd}') TO ('{next:yyyy-MM-dd}')";
+        await db.Database.ExecuteSqlRawAsync(sql);
+    }
 }
 
 // --- Middleware ---
