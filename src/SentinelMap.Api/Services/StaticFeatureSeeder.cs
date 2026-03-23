@@ -12,10 +12,11 @@ public static class StaticFeatureSeeder
         using var scope = services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
 
-        // Skip if static features already exist
-        if (await db.MapFeatures.AnyAsync(f => f.Source == "static")) return;
-
+        // Seed airspace zones (has its own idempotency check)
         await SeedAirspaceZonesAsync(db);
+
+        // Skip map features if static ones already exist
+        if (await db.MapFeatures.AnyAsync(f => f.Source == "static")) return;
 
         var features = new List<MapFeature>();
 
