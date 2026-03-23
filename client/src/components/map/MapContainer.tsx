@@ -160,7 +160,15 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
           />
         )}
         {selectedEntity && (
-          <EntityDetailPanel entity={selectedEntity} onClose={() => setSelectedEntity(null)} />
+          <EntityDetailPanel
+            entity={selectedEntity}
+            onClose={() => setSelectedEntity(null)}
+            onCreateGeofence={() => {
+              setDrawMode('circle')
+              setSelectedEntity(null)
+            }}
+            onToggleTrails={() => setTrailsVisible(v => !v)}
+          />
         )}
         {/* Trails toggle button */}
         <button
