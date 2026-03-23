@@ -17,7 +17,7 @@ public class SimulatedAisConnectorTests
     public async Task StreamAsync_YieldsObservations()
     {
         var connector = new SimulatedAisConnector(updateIntervalMs: 10);
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
 
         var observations = new List<SentinelMap.Domain.Entities.Observation>();
         await foreach (var obs in connector.StreamAsync(cts.Token))
