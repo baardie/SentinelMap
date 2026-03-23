@@ -42,7 +42,8 @@ public class AisStreamConnector : ISourceConnector
         var subscription = JsonSerializer.Serialize(new
         {
             APIKey = _apiKey,
-            BoundingBoxes = new[] { new[] { new[] { -180.0, -90.0 }, new[] { 180.0, 90.0 } } },
+            // UK + NI + English Channel + Irish Sea bounding box
+            BoundingBoxes = new[] { new[] { new[] { -11.0, 49.0 }, new[] { 2.5, 61.0 } } },
             FilterMessageTypes = new[] { "PositionReport", "ShipStaticData", "StandardClassBPositionReport" }
         });
 

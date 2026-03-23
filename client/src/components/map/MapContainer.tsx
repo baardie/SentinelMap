@@ -9,6 +9,7 @@ import { GeofenceLayer } from './GeofenceLayer'
 import { TrackHistoryLayer } from './TrackHistoryLayer'
 import { EntityDetailPanel } from './EntityDetailPanel'
 import { GeofenceDrawer } from './GeofenceDrawer'
+import { GeofenceConfigPanel } from './GeofenceConfigPanel'
 import { apiFetch } from '../../lib/api'
 import type { TrackFeature, TrackProperties, GeofenceData } from '../../types'
 
@@ -51,6 +52,7 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
     const [selectedEntity, setSelectedEntity] = useState<TrackProperties | null>(null)
     const [trailsVisible, setTrailsVisible] = useState(true)
     const [drawMode, setDrawMode] = useState<'polygon' | 'circle' | null>(null)
+    const [editingGeofence, setEditingGeofence] = useState<{ id: string; name: string; fenceType: string; color: string } | null>(null)
     const mapRef = useRef<maplibregl.Map | null>(null)
     const tracksRef = useRef<TrackFeature[]>(tracks)
 
@@ -99,6 +101,23 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
         m.on('mouseleave', 'maritime-track-symbols', () => { m.getCanvas().style.cursor = '' })
         m.on('mouseenter', 'aviation-track-symbols', () => { m.getCanvas().style.cursor = 'pointer' })
         m.on('mouseleave', 'aviation-track-symbols', () => { m.getCanvas().style.cursor = '' })
+
+        m.on('click', 'geofence-fill', (e) => {
+          if (drawMode) return
+          if (e.features?.[0]) {
+            const trackFeatures = m.queryRenderedFeatures(e.point, { layers: ['maritime-track-symbols', 'aviation-track-symbols'] })
+            if (trackFeatures.length > 0) return
+            const props = e.features[0].properties
+            setEditingGeofence({
+              id: props.id,
+              name: props.name,
+              fenceType: props.fenceType,
+              color: props.color,
+            })
+          }
+        })
+        m.on('mouseenter', 'geofence-fill', () => { m.getCanvas().style.cursor = 'pointer' })
+        m.on('mouseleave', 'geofence-fill', () => { m.getCanvas().style.cursor = '' })
 
         setMap(m)
       })
@@ -157,6 +176,37 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
             mode={drawMode}
             onComplete={handleDrawComplete}
             onCancel={handleDrawCancel}
+          />
+        )}
+        {editingGeofence && (
+          <GeofenceConfigPanel
+            geometry={[]}
+            editMode
+            initialName={editingGeofence.name}
+            initialColor={editingGeofence.color}
+            initialFenceType={editingGeofence.fenceType}
+            onSave={async (name, color, fenceType) => {
+              try {
+                await apiFetch(`/api/v1/geofences/${editingGeofence.id}`, {
+                  method: 'PUT',
+                  body: JSON.stringify({ name, coordinates: [], fenceType, color }),
+                })
+                setEditingGeofence(null)
+                onGeofenceCreated?.()
+              } catch {
+                // Silently handle — in production this would show an error toast
+              }
+            }}
+            onCancel={() => setEditingGeofence(null)}
+            onDelete={async () => {
+              try {
+                await apiFetch(`/api/v1/geofences/${editingGeofence.id}`, { method: 'DELETE' })
+                setEditingGeofence(null)
+                onGeofenceCreated?.()
+              } catch {
+                // Silently handle — in production this would show an error toast
+              }
+            }}
           />
         )}
         {selectedEntity && (

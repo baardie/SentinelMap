@@ -5,6 +5,12 @@ interface GeofenceConfigPanelProps {
   radiusNm?: number
   onSave: (name: string, color: string, fenceType: string) => void
   onCancel: () => void
+  // Edit mode props
+  editMode?: boolean
+  initialName?: string
+  initialColor?: string
+  initialFenceType?: string
+  onDelete?: () => void
 }
 
 const COLOUR_PRESETS = [
@@ -18,10 +24,19 @@ const COLOUR_PRESETS = [
 
 const FENCE_TYPES = ['ENTRY', 'EXIT', 'BOTH'] as const
 
-export function GeofenceConfigPanel({ radiusNm, onSave, onCancel }: GeofenceConfigPanelProps) {
-  const [name, setName] = useState('')
-  const [color, setColor] = useState('#f59e0b')
-  const [fenceType, setFenceType] = useState<string>('ENTRY')
+export function GeofenceConfigPanel({
+  radiusNm,
+  onSave,
+  onCancel,
+  editMode = false,
+  initialName,
+  initialColor,
+  initialFenceType,
+  onDelete,
+}: GeofenceConfigPanelProps) {
+  const [name, setName] = useState(initialName ?? '')
+  const [color, setColor] = useState(initialColor ?? '#f59e0b')
+  const [fenceType, setFenceType] = useState<string>(initialFenceType ?? 'ENTRY')
 
   const canSave = name.trim().length > 0
 
@@ -38,7 +53,7 @@ export function GeofenceConfigPanel({ radiusNm, onSave, onCancel }: GeofenceConf
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
         <span className="text-slate-100 text-sm font-semibold tracking-wide uppercase font-mono">
-          NEW GEOFENCE
+          {editMode ? 'EDIT GEOFENCE' : 'NEW GEOFENCE'}
         </span>
         <button
           onClick={onCancel}
@@ -138,7 +153,7 @@ export function GeofenceConfigPanel({ radiusNm, onSave, onCancel }: GeofenceConf
           }`}
           style={{ borderRadius: '2px' }}
         >
-          CREATE GEOFENCE
+          {editMode ? 'UPDATE GEOFENCE' : 'CREATE GEOFENCE'}
         </button>
         <button
           onClick={onCancel}
@@ -147,6 +162,15 @@ export function GeofenceConfigPanel({ radiusNm, onSave, onCancel }: GeofenceConf
         >
           CANCEL
         </button>
+        {editMode && onDelete && (
+          <button
+            onClick={onDelete}
+            className="w-full py-2 text-xs font-mono tracking-widest uppercase bg-slate-900 border border-red-800 text-red-500 hover:text-red-300 hover:border-red-600 transition-colors"
+            style={{ borderRadius: '2px' }}
+          >
+            DELETE GEOFENCE
+          </button>
+        )}
       </div>
     </div>
   )
