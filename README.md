@@ -240,11 +240,16 @@ dotnet test SentinelMap.slnx
 
 ### PMTiles Basemap
 
-The basemap is downloaded separately (400MB, UK+Ireland at zoom 12):
+The vector basemap is downloaded separately via the Protomaps planet build. Choose a preset based on your area of interest:
 
-```bash
-bash scripts/download-pmtiles.sh
-```
+| Preset | Coverage | Max Zoom | Size | Command |
+|--------|----------|----------|------|---------|
+| `mersey` | Liverpool / Mersey estuary | 14 | ~75 MB | `bash scripts/download-pmtiles.sh mersey` |
+| `uk` | UK + Ireland (default) | 12 | ~400 MB | `bash scripts/download-pmtiles.sh` |
+| `europe` | Western Europe | 10 | ~1.5 GB | `bash scripts/download-pmtiles.sh europe` |
+| `world` | Global | 8 | ~2 GB | `bash scripts/download-pmtiles.sh world` |
+
+Higher zoom = more street-level detail. Lower zoom presets cover wider areas but less detail when zoomed in. The `uk` preset is recommended for most users.
 
 ## Security
 
