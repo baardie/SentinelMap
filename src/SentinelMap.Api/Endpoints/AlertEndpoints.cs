@@ -18,10 +18,17 @@ public static class AlertEndpoints
 
     private static async Task<IResult> GetFeed(
         IAlertRepository repo,
+        string? type = null,
         int limit = 50,
         CancellationToken ct = default)
     {
         var alerts = await repo.GetFeedAsync(limit, ct);
+
+        if (!string.IsNullOrEmpty(type))
+        {
+            var types = type.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            alerts = alerts.Where(a => types.Contains(a.Type.ToString())).ToList();
+        }
         return Results.Ok(alerts.Select(a => new
         {
             a.Id,

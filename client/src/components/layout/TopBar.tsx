@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { CorrelationReviewPanel } from '@/components/correlation/CorrelationReviewPanel'
+import { SafetyAlertsPanel } from '@/components/alerts/SafetyAlertsPanel'
 
 interface TopBarProps {
   searchTerm: string
@@ -12,9 +13,15 @@ export function TopBar({ searchTerm, onSearch, onShowSessions }: TopBarProps) {
   const { user, logout } = useAuth()
   const [reviewPanelOpen, setReviewPanelOpen] = useState(false)
   const [pendingCount, setPendingCount] = useState(0)
+  const [safetyPanelOpen, setSafetyPanelOpen] = useState(false)
+  const [safetyCount, setSafetyCount] = useState(0)
 
   const handleCountChange = useCallback((count: number) => {
     setPendingCount(count)
+  }, [])
+
+  const handleSafetyCountChange = useCallback((count: number) => {
+    setSafetyCount(count)
   }, [])
 
   return (
@@ -33,12 +40,23 @@ export function TopBar({ searchTerm, onSearch, onShowSessions }: TopBarProps) {
         {user && (
           <>
             <button
-              onClick={() => setReviewPanelOpen(!reviewPanelOpen)}
+              onClick={() => { setSafetyPanelOpen(!safetyPanelOpen); setReviewPanelOpen(false) }}
+              className="relative font-mono text-xs text-slate-400 hover:text-amber-300 uppercase tracking-widest transition-colors"
+            >
+              SAFETY
+              {safetyCount > 0 && (
+                <span className="ml-1 inline-block font-mono text-[10px] font-bold bg-amber-600 text-slate-900 px-1.5 py-0.5 min-w-[1.25rem] text-center" style={{ borderRadius: '2px' }}>
+                  {safetyCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => { setReviewPanelOpen(!reviewPanelOpen); setSafetyPanelOpen(false) }}
               className="relative font-mono text-xs text-slate-400 hover:text-amber-300 uppercase tracking-widest transition-colors"
             >
               REVIEW
               {pendingCount > 0 && (
-                <span className="ml-1 inline-block font-mono text-[10px] font-bold bg-amber-600 text-slate-900 px-1.5 py-0.5 min-w-[1.25rem] text-center">
+                <span className="ml-1 inline-block font-mono text-[10px] font-bold bg-amber-600 text-slate-900 px-1.5 py-0.5 min-w-[1.25rem] text-center" style={{ borderRadius: '2px' }}>
                   {pendingCount}
                 </span>
               )}
@@ -67,6 +85,11 @@ export function TopBar({ searchTerm, onSearch, onShowSessions }: TopBarProps) {
           </>
         )}
       </div>
+      <SafetyAlertsPanel
+        isOpen={safetyPanelOpen}
+        onClose={() => setSafetyPanelOpen(false)}
+        onCountChange={handleSafetyCountChange}
+      />
       <CorrelationReviewPanel
         isOpen={reviewPanelOpen}
         onClose={() => setReviewPanelOpen(false)}
