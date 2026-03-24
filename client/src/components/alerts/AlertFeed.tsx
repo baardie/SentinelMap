@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import type { AlertNotification } from '../../types'
 
 interface AlertFeedProps {
@@ -6,10 +6,30 @@ interface AlertFeedProps {
   onAlertClick?: (entityId: string) => void
 }
 
-function severityDotClass(severity: AlertNotification['severity']): string {
+const ALERT_TYPES = [
+  'GeofenceBreach',
+  'WatchlistMatch',
+  'AisDark',
+  'SpeedAnomaly',
+  'TransponderSwap',
+  'CorrelationLink',
+  'RouteDeviation',
+  'SafetyBroadcast',
+] as const
+
+const SEVERITY_LEVELS = ['Critical', 'High', 'Medium', 'Low'] as const
+
+function severityDotClass(severity: string): string {
   if (severity === 'Critical' || severity === 'High') return 'text-red-500'
-  if (severity === 'Medium') return 'text-amber-500'
+  if (severity === 'Medium') return 'text-amber-400'
   return 'text-sky-500'
+}
+
+function severityBgClass(severity: string, active: boolean): string {
+  if (!active) return 'bg-slate-800 border-slate-700 text-slate-600'
+  if (severity === 'Critical' || severity === 'High') return 'bg-red-950 border-red-800 text-red-400'
+  if (severity === 'Medium') return 'bg-amber-950 border-amber-800 text-amber-400'
+  return 'bg-sky-950 border-sky-800 text-sky-400'
 }
 
 function formatRelativeTime(iso: string): string {
@@ -27,8 +47,46 @@ function formatRelativeTime(iso: string): string {
   }
 }
 
+function shortType(type: string): string {
+  return type
+    .replace('GeofenceBreach', 'GEOFENCE')
+    .replace('WatchlistMatch', 'WATCHLIST')
+    .replace('AisDark', 'AIS DARK')
+    .replace('SpeedAnomaly', 'SPEED')
+    .replace('TransponderSwap', 'TRANSPONDER')
+    .replace('CorrelationLink', 'CORRELATION')
+    .replace('RouteDeviation', 'DEVIATION')
+    .replace('SafetyBroadcast', 'SAFETY')
+}
+
 export function AlertFeed({ alerts, onAlertClick }: AlertFeedProps) {
   const [expanded, setExpanded] = useState(true)
+  const [showFilters, setShowFilters] = useState(false)
+  const [enabledTypes, setEnabledTypes] = useState<Set<string>>(new Set(ALERT_TYPES))
+  const [enabledSeverities, setEnabledSeverities] = useState<Set<string>>(new Set(SEVERITY_LEVELS))
+
+  const toggleType = (type: string) => {
+    setEnabledTypes(prev => {
+      const next = new Set(prev)
+      if (next.has(type)) next.delete(type)
+      else next.add(type)
+      return next
+    })
+  }
+
+  const toggleSeverity = (sev: string) => {
+    setEnabledSeverities(prev => {
+      const next = new Set(prev)
+      if (next.has(sev)) next.delete(sev)
+      else next.add(sev)
+      return next
+    })
+  }
+
+  const filteredAlerts = useMemo(
+    () => alerts.filter(a => enabledTypes.has(a.type) && enabledSeverities.has(a.severity)),
+    [alerts, enabledTypes, enabledSeverities],
+  )
 
   const handleAlertClick = (alert: AlertNotification) => {
     if (alert.entityId && onAlertClick) {
@@ -39,18 +97,34 @@ export function AlertFeed({ alerts, onAlertClick }: AlertFeedProps) {
   return (
     <div
       className={`flex flex-col border-t border-slate-700 bg-slate-900 transition-all duration-200 ${
-        expanded ? 'h-48' : 'h-8'
+        expanded ? 'h-64' : 'h-8'
       }`}
     >
       {/* Header bar */}
       <div className="flex h-8 flex-shrink-0 items-center justify-between border-b border-slate-700 px-4">
         <div className="flex items-center gap-2">
           <span className="font-mono text-xs font-bold tracking-widest text-slate-300">ALERTS</span>
-          {alerts.length > 0 && (
-            <span className="rounded bg-red-600 px-1.5 py-0.5 font-mono text-xs font-bold text-white">
-              {alerts.length}
+          {filteredAlerts.length > 0 && (
+            <span className="bg-red-600 px-1.5 py-0.5 font-mono text-xs font-bold text-white" style={{ borderRadius: '2px' }}>
+              {filteredAlerts.length}
             </span>
           )}
+          {filteredAlerts.length !== alerts.length && (
+            <span className="font-mono text-xs text-slate-500">
+              / {alerts.length}
+            </span>
+          )}
+          <button
+            onClick={() => setShowFilters(v => !v)}
+            className={`px-1.5 py-0.5 font-mono text-xs tracking-widest border transition-colors ${
+              showFilters
+                ? 'bg-slate-700 border-slate-500 text-slate-200'
+                : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300'
+            }`}
+            style={{ borderRadius: '2px' }}
+          >
+            FILTER
+          </button>
         </div>
         <button
           onClick={() => setExpanded(prev => !prev)}
@@ -61,15 +135,61 @@ export function AlertFeed({ alerts, onAlertClick }: AlertFeedProps) {
         </button>
       </div>
 
+      {/* Filter bar */}
+      {expanded && showFilters && (
+        <div className="flex flex-col gap-2 border-b border-slate-800 px-4 py-2 bg-slate-950">
+          {/* Type filters */}
+          <div className="flex items-center gap-1 flex-wrap">
+            <span className="font-mono text-xs text-slate-500 tracking-widest mr-1 w-12">TYPE</span>
+            {ALERT_TYPES.map(type => {
+              const active = enabledTypes.has(type)
+              const count = alerts.filter(a => a.type === type).length
+              return (
+                <button
+                  key={type}
+                  onClick={() => toggleType(type)}
+                  className={`px-1.5 py-0.5 font-mono text-xs tracking-wider border transition-colors ${
+                    active
+                      ? 'bg-slate-700 border-slate-500 text-slate-200'
+                      : 'bg-slate-800 border-slate-700 text-slate-600'
+                  }`}
+                  style={{ borderRadius: '2px' }}
+                >
+                  {shortType(type)}
+                  {count > 0 && <span className="ml-1 text-slate-500">{count}</span>}
+                </button>
+              )
+            })}
+          </div>
+          {/* Severity filters */}
+          <div className="flex items-center gap-1">
+            <span className="font-mono text-xs text-slate-500 tracking-widest mr-1 w-12">SEV</span>
+            {SEVERITY_LEVELS.map(sev => {
+              const active = enabledSeverities.has(sev)
+              return (
+                <button
+                  key={sev}
+                  onClick={() => toggleSeverity(sev)}
+                  className={`px-1.5 py-0.5 font-mono text-xs tracking-wider border transition-colors ${severityBgClass(sev, active)}`}
+                  style={{ borderRadius: '2px' }}
+                >
+                  {sev.toUpperCase()}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Alert list */}
       {expanded && (
         <div className="flex-1 overflow-y-auto">
-          {alerts.length === 0 ? (
+          {filteredAlerts.length === 0 ? (
             <div className="flex h-full items-center justify-center font-mono text-xs text-slate-600">
-              No alerts
+              {alerts.length === 0 ? 'No alerts' : 'No alerts match filters'}
             </div>
           ) : (
-            alerts.map(alert => (
+            filteredAlerts.map(alert => (
               <button
                 key={alert.alertId}
                 className="flex w-full items-start gap-3 border-b border-slate-800 px-4 py-2 text-left hover:bg-slate-800 focus:outline-none"
@@ -84,7 +204,7 @@ export function AlertFeed({ alerts, onAlertClick }: AlertFeedProps) {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-xs font-semibold uppercase tracking-wide text-slate-400">
-                      {alert.type}
+                      {shortType(alert.type)}
                     </span>
                     <span className={`font-mono text-xs uppercase tracking-wide ${severityDotClass(alert.severity)}`}>
                       {alert.severity}
