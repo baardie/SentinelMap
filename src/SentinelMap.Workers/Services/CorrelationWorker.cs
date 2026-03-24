@@ -256,13 +256,18 @@ public class CorrelationProcessor
         if (_systemDb == null) return;
         try
         {
+            // Use a date range for partition routing (exact timestamp may have microsecond drift)
+            var dayStart = observedAt.UtcDateTime.Date;
+            var dayEnd = dayStart.AddDays(1);
+            object[] parameters = [entityId, observationId, DateTime.SpecifyKind(dayStart, DateTimeKind.Utc), DateTime.SpecifyKind(dayEnd, DateTimeKind.Utc)];
             await _systemDb.Database.ExecuteSqlRawAsync(
-                "UPDATE observations SET entity_id = {0} WHERE id = {1} AND observed_at = {2}",
-                entityId, observationId, observedAt, ct);
+                "UPDATE observations SET entity_id = {0} WHERE id = {1} AND observed_at >= {2} AND observed_at < {3}",
+                parameters,
+                ct);
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Failed to link observation {ObsId} to entity {EntityId}", observationId, entityId);
+            _logger.LogWarning(ex, "Failed to link observation {ObsId} to entity {EntityId}", observationId, entityId);
         }
     }
 }
