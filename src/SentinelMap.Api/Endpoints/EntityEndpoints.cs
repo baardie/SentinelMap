@@ -11,7 +11,7 @@ public static class EntityEndpoints
         var group = app.MapGroup("/api/v1/entities").WithTags("Entities");
 
         group.MapGet("/{id:guid}", GetById).RequireAuthorization("ViewerAccess");
-        group.MapGet("/{id:guid}/track", GetTrack).RequireAuthorization("ViewerAccess");
+        // Track history endpoint is in TrackEndpoints.cs
     }
 
     private static async Task<IResult> GetById(

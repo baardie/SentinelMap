@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -60,6 +61,9 @@ public class CorrelationProcessor
         {
             // Hot path: known entity — update position only
             await _entityRepo.UpdatePositionAsync(entityId, position, msg.SpeedMps, msg.Heading, msg.ObservedAt, ct);
+
+            // Link observation to entity for historical track queries
+            await LinkObservationToEntityAsync(msg.ObservationId, entityId, msg.ObservedAt, ct);
 
             _logger.LogDebug("Hot-path hit for {Source}:{ExternalId} → entity {EntityId}", msg.SourceType, msg.ExternalId, entityId);
 
@@ -158,6 +162,7 @@ public class CorrelationProcessor
 
             await _entityRepo.UpdateAsync(matchedEntity, ct);
             await _db.StringSetAsync(cacheKey, matchedEntity.Id.ToString(), CacheTtl, When.Always, CommandFlags.None);
+            await LinkObservationToEntityAsync(msg.ObservationId, matchedEntity.Id, msg.ObservedAt, ct);
 
             _logger.LogInformation(
                 "Correlated {Source}:{ExternalId} → entity {EntityId} via {Rule} (confidence {Confidence:F2})",
@@ -193,6 +198,7 @@ public class CorrelationProcessor
 
             await _entityRepo.AddAsync(newEntity, ct);
             await _db.StringSetAsync(cacheKey, newEntity.Id.ToString(), CacheTtl, When.Always, CommandFlags.None);
+            await LinkObservationToEntityAsync(msg.ObservationId, newEntity.Id, msg.ObservedAt, ct);
 
             var review = new CorrelationReview
             {
@@ -240,11 +246,29 @@ public class CorrelationProcessor
         // Cache the link for future observations
         await _db.StringSetAsync(cacheKey, entity.Id.ToString(), CacheTtl, When.Always, CommandFlags.None);
 
+        // Link observation to entity for historical track queries
+        await LinkObservationToEntityAsync(msg.ObservationId, entity.Id, msg.ObservedAt, ct);
+
         _logger.LogInformation("Created entity {EntityId} for {Source}:{ExternalId}", entity.Id, msg.SourceType, msg.ExternalId);
 
         return new EntityUpdatedMessage(entity.Id, msg.Longitude, msg.Latitude, msg.Heading, msg.SpeedMps,
             entityType.ToString(), EntityStatus.Active.ToString(), msg.ObservedAt, msg.DisplayName,
             msg.VesselType, msg.AircraftType);
+    }
+
+    private async Task LinkObservationToEntityAsync(long observationId, Guid entityId, DateTimeOffset observedAt, CancellationToken ct)
+    {
+        if (_systemDb == null) return;
+        try
+        {
+            await _systemDb.Database.ExecuteSqlRawAsync(
+                "UPDATE observations SET entity_id = {0} WHERE id = {1} AND observed_at = {2}",
+                entityId, observationId, observedAt, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to link observation {ObsId} to entity {EntityId}", observationId, entityId);
+        }
     }
 }
 
