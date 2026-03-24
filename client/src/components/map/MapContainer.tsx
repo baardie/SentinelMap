@@ -167,9 +167,11 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
       })
 
       return () => {
-        m.remove()
         mapRef.current = null
         setMap(null)
+        // Defer map.remove() to next tick so child cleanup effects
+        // see map=null and skip their getLayer/removeLayer calls
+        setTimeout(() => { try { m.remove() } catch {} }, 0)
       }
     }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
