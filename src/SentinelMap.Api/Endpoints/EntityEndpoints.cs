@@ -32,11 +32,20 @@ public static class EntityEndpoints
             .FirstOrDefaultAsync(ct);
 
         // Get latest static data observation (has destination/dimensions from ShipStaticData)
-        var latestStaticRaw = await db.Observations
-            .Where(o => o.EntityId == id && o.RawData != null && o.RawData.Contains("destination"))
-            .OrderByDescending(o => o.ObservedAt)
-            .Select(o => o.RawData)
-            .FirstOrDefaultAsync(ct);
+        // RawData is jsonb — use raw SQL to check for key existence
+        string? latestStaticRaw = null;
+        try
+        {
+            var staticResult = await db.Database
+                .SqlQuery<string>($"""
+                    SELECT raw_data AS "Value" FROM observations
+                    WHERE entity_id = {id} AND raw_data ? 'destination'
+                    ORDER BY observed_at DESC LIMIT 1
+                    """)
+                .FirstOrDefaultAsync(ct);
+            latestStaticRaw = staticResult;
+        }
+        catch { /* Static data query failed — proceed without it */ }
 
         var enrichment = BuildEnrichment(entity.Type.ToString(), entity.Identifiers, latestObs?.RawData, latestStaticRaw);
 
