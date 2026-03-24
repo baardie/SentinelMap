@@ -16,6 +16,7 @@ import { StructureConfigPanel } from './StructureConfigPanel'
 import { LayerControlPanel } from './LayerControlPanel'
 import { PredictionLayer } from './PredictionLayer'
 import { ExportButton } from './ExportButton'
+import { CityLabelsLayer } from './CityLabelsLayer'
 import { TrackReplayLayer } from '../timeline/TrackReplayLayer'
 import { TimelineScrubber } from '../timeline/TimelineScrubber'
 import { apiFetch } from '../../lib/api'
@@ -267,6 +268,7 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
             visible={layerVisibility.trails}
           />
         )}
+        {map && <CityLabelsLayer map={map} />}
         {map && <MaritimeTrackLayer map={map} tracks={tracks} />}
         {map && <AviationTrackLayer map={map} tracks={tracks} />}
         {map && layerVisibility.geofences && (
