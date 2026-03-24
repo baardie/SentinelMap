@@ -16,7 +16,7 @@ public class MapFeatureConfiguration : IEntityTypeConfiguration<MapFeature>
         builder.Property(f => f.Position).HasColumnName("position").HasColumnType("geometry(Point, 4326)");
         builder.Property(f => f.Icon).HasColumnName("icon");
         builder.Property(f => f.Color).HasColumnName("color");
-        builder.Property(f => f.Details).HasColumnName("details").HasColumnType("jsonb");
+        builder.Property(f => f.Details).HasColumnName("details").HasColumnType("text");
         builder.Property(f => f.Source).HasColumnName("source");
         builder.Property(f => f.IsActive).HasColumnName("is_active");
         builder.Property(f => f.CreatedBy).HasColumnName("created_by");
