@@ -214,29 +214,33 @@ export function EntityDetailPanel({ entity, onClose, onCreateGeofence, onToggleT
 
         {enrichment && (
           <>
-            {/* Flag */}
-            {enrichment.flag && (
+            {/* Flag (vessels) */}
+            {entity.entityType === 'Vessel' && (
               <div className="flex justify-between py-1">
                 <span className="text-slate-400">Flag</span>
-                <span className="text-slate-100">
-                  {countryFlag(enrichment.flag)} {enrichment.flag}
+                <span className={enrichment.flag ? 'text-slate-100' : 'text-slate-500'}>
+                  {enrichment.flag ? `${countryFlag(enrichment.flag)} ${enrichment.flag}` : 'Unknown'}
                 </span>
               </div>
             )}
 
             {/* Vessel Type */}
-            {enrichment.vesselType && (
+            {entity.entityType === 'Vessel' && (
               <div className="flex justify-between py-1">
                 <span className="text-slate-400">Vessel Type</span>
-                <span className="text-slate-100">{enrichment.vesselType}</span>
+                <span className={enrichment.vesselType ? 'text-slate-100' : 'text-slate-500'}>
+                  {enrichment.vesselType || 'Unknown'}
+                </span>
               </div>
             )}
 
             {/* Aircraft Type */}
-            {enrichment.aircraftType && (
+            {entity.entityType === 'Aircraft' && (
               <div className="flex justify-between py-1">
                 <span className="text-slate-400">Aircraft Type</span>
-                <span className="text-slate-100">{enrichment.aircraftType}</span>
+                <span className={enrichment.aircraftType ? 'text-slate-100' : 'text-slate-500'}>
+                  {enrichment.aircraftType || 'Unknown'}
+                </span>
               </div>
             )}
 
