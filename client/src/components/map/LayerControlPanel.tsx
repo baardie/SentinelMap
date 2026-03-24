@@ -14,6 +14,7 @@ const LAYERS = [
   { id: 'airports', label: 'AIRPORTS', defaultOn: true },
   { id: 'military', label: 'MILITARY', defaultOn: true },
   { id: 'structures', label: 'STRUCTURES', defaultOn: true },
+  { id: 'predictions', label: 'PREDICTIONS', defaultOn: false },
 ]
 
 export function LayerControlPanel({ visibility, onChange }: LayerControlPanelProps) {

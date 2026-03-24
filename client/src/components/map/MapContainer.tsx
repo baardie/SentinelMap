@@ -14,10 +14,13 @@ import { MapIntelligenceLayer } from './MapIntelligenceLayer'
 import { StructurePlacer } from './StructurePlacer'
 import { StructureConfigPanel } from './StructureConfigPanel'
 import { LayerControlPanel } from './LayerControlPanel'
+import { PredictionLayer } from './PredictionLayer'
 import { ExportButton } from './ExportButton'
+import { TrackReplayLayer } from '../timeline/TrackReplayLayer'
+import { TimelineScrubber } from '../timeline/TimelineScrubber'
 import { apiFetch } from '../../lib/api'
 import { useToast } from '../../contexts/ToastContext'
-import type { TrackFeature, TrackProperties, GeofenceData, MapFeatureData } from '../../types'
+import type { TrackFeature, TrackProperties, GeofenceData, MapFeatureData, TrackPosition } from '../../types'
 
 const protocol = new Protocol()
 maplibregl.addProtocol('pmtiles', protocol.tile)
@@ -51,10 +54,13 @@ interface MapContainerProps {
   onGeofenceCreated?: () => void
   mapFeatures?: MapFeatureData[]
   onMapFeatureCreated?: () => void
+  replayEntityId: string | null
+  onReplayOpen: (entityId: string) => void
+  onReplayClose: () => void
 }
 
 export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
-  function MapContainer({ tracks, trackHistory, geofences = [], onGeofenceCreated, mapFeatures = [], onMapFeatureCreated }, ref) {
+  function MapContainer({ tracks, trackHistory, geofences = [], onGeofenceCreated, mapFeatures = [], onMapFeatureCreated, replayEntityId, onReplayOpen, onReplayClose }, ref) {
     const { showToast } = useToast()
     const mapContainerRef = useRef<HTMLDivElement>(null)
     const [map, setMap] = useState<maplibregl.Map | null>(null)
@@ -64,6 +70,11 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
     // Refs for mode state — accessible from map click handlers (stale closure issue)
     const drawModeRef = useRef(drawMode)
     const placingStructureRef = useRef(false)
+
+    // Replay state
+    const [replayTrackData, setReplayTrackData] = useState<TrackPosition[]>([])
+    const [replayTime, setReplayTime] = useState<Date | null>(null)
+
     const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({
       vessels: true,
       aircraft: true,
@@ -75,6 +86,7 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
       airports: true,
       military: true,
       structures: true,
+      predictions: false,
     })
     const [layerPanelOpen, setLayerPanelOpen] = useState(false)
     const [placingStructure, setPlacingStructure] = useState(false)
@@ -283,6 +295,21 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
             onCancel={handleStructurePlaceCancel}
           />
         )}
+        {map && (
+          <PredictionLayer
+            map={map}
+            tracks={tracks}
+            visible={layerVisibility.predictions === true}
+          />
+        )}
+        {map && (
+          <TrackReplayLayer
+            map={map}
+            trackData={replayTrackData}
+            currentTime={replayTime}
+            visible={replayEntityId !== null}
+          />
+        )}
         {editingGeofence && (
           <GeofenceConfigPanel
             geometry={[]}
@@ -332,6 +359,10 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
               setSelectedEntity(null)
             }}
             onToggleTrails={() => setLayerVisibility(prev => ({ ...prev, trails: !prev.trails }))}
+            onReplay={() => {
+              onReplayOpen(selectedEntity.entityId)
+              setSelectedEntity(null)
+            }}
           />
         )}
 
@@ -405,6 +436,23 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
             <ExportButton />
           </div>
         </div>
+
+        {/* Timeline Scrubber */}
+        {replayEntityId && (
+          <div className="absolute bottom-0 left-0 right-0 z-10">
+            <TimelineScrubber
+              visible={replayEntityId !== null}
+              entityId={replayEntityId}
+              onTimeChange={setReplayTime}
+              onTrackData={setReplayTrackData}
+              onClose={() => {
+                onReplayClose()
+                setReplayTrackData([])
+                setReplayTime(null)
+              }}
+            />
+          </div>
+        )}
       </div>
     )
   }

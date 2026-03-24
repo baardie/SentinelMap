@@ -8,6 +8,7 @@ interface EntityDetailPanelProps {
   onClose: () => void
   onCreateGeofence?: () => void
   onToggleTrails?: () => void
+  onReplay?: () => void
 }
 
 function formatTime(iso: string): string {
@@ -51,7 +52,7 @@ function countryFlag(countryName: string): string {
   return map[countryName] ?? ''
 }
 
-export function EntityDetailPanel({ entity, onClose, onCreateGeofence, onToggleTrails }: EntityDetailPanelProps) {
+export function EntityDetailPanel({ entity, onClose, onCreateGeofence, onToggleTrails, onReplay }: EntityDetailPanelProps) {
   const { showToast } = useToast()
   const [watchlistAdded, setWatchlistAdded] = useState(false)
   const [watchlistLoading, setWatchlistLoading] = useState(false)
@@ -354,6 +355,15 @@ export function EntityDetailPanel({ entity, onClose, onCreateGeofence, onToggleT
           style={{ borderRadius: '2px' }}
         >
           TRACK HISTORY
+        </button>
+
+        <button
+          onClick={onReplay}
+          disabled={!onReplay}
+          className="w-full px-3 py-2 font-mono text-xs tracking-widest uppercase bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          style={{ borderRadius: '2px' }}
+        >
+          REPLAY
         </button>
       </div>
     </div>

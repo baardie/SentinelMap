@@ -35,6 +35,7 @@ function CopLayout() {
   const [geofences, setGeofences] = useState<GeofenceData[]>([])
   const [mapFeatures, setMapFeatures] = useState<MapFeatureData[]>([])
   const [showSessions, setShowSessions] = useState(false)
+  const [replayEntityId, setReplayEntityId] = useState<string | null>(null)
 
   const loadGeofences = useCallback(() => {
     if (!isAuthenticated) return
@@ -84,6 +85,9 @@ function CopLayout() {
           onGeofenceCreated={loadGeofences}
           mapFeatures={mapFeatures}
           onMapFeatureCreated={loadMapFeatures}
+          replayEntityId={replayEntityId}
+          onReplayOpen={setReplayEntityId}
+          onReplayClose={() => setReplayEntityId(null)}
         />
       </main>
       <AlertFeed alerts={alerts} onAlertClick={handleAlertClick} />
