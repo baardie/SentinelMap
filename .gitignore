@@ -24,8 +24,7 @@ dist/
 *.swp
 
 # Claude Code
-.claude/settings.local.json
-.claude/projects/
+.claude/
 
 # OS
 .DS_Store
