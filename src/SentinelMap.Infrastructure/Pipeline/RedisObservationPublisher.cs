@@ -25,7 +25,8 @@ public class RedisObservationPublisher : IObservationPublisher
             try
             {
                 var rawNode = System.Text.Json.Nodes.JsonNode.Parse(observation.RawData);
-                displayName = rawNode?["displayName"]?.GetValue<string>();
+                displayName = rawNode?["displayName"]?.GetValue<string>()
+                    ?? rawNode?["text"]?.GetValue<string>(); // safety broadcasts carry text instead of displayName
                 vesselType = rawNode?["vesselType"]?.GetValue<string>();
                 aircraftType = rawNode?["aircraftType"]?.GetValue<string>();
             }

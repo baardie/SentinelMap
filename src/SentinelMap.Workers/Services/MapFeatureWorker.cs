@@ -175,24 +175,9 @@ public class MapFeatureWorker : BackgroundService
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
 
-        // Look up the observation to get safety text
-        var observation = await db.Observations
-            .Where(o => o.Id == msg.ObservationId)
-            .Select(o => new { o.RawData })
-            .FirstOrDefaultAsync(ct);
-
-        string text = "Safety broadcast received";
+        // Safety text is carried in DisplayName field of the published message
+        string text = msg.DisplayName ?? "Safety broadcast received";
         string mmsi = msg.ExternalId;
-
-        if (observation?.RawData is not null)
-        {
-            try
-            {
-                var rawNode = JsonNode.Parse(observation.RawData);
-                text = rawNode?["text"]?.GetValue<string>() ?? text;
-            }
-            catch { /* use default */ }
-        }
 
         // Create a safety broadcast alert
         var alert = new Alert

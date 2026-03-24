@@ -30,6 +30,17 @@ public class IngestionPipeline
 
     public async Task ProcessAsync(Observation observation, CancellationToken ct = default)
     {
+        // Infrastructure and safety messages bypass validation/dedup — publish directly to Redis
+        if (observation.SourceType is "AIS_INFRA" or "AIS_SAFETY")
+        {
+            try { await _publisher.PublishAsync(observation, ct); }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to publish {SourceType} observation to Redis", observation.SourceType);
+            }
+            return;
+        }
+
         // Stage 1: Validate
         var validation = await _validator.ValidateAsync(observation, ct);
         if (!validation.IsValid)
