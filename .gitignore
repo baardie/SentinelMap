@@ -44,3 +44,4 @@ out/
 # PMTiles (large binary, download separately via scripts/download-pmtiles.sh)
 *.pmtiles
 client/public/tiles/*.pmtiles
+Specifications/
