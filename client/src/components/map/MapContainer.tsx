@@ -92,6 +92,7 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
     const [layerPanelOpen, setLayerPanelOpen] = useState(false)
     const [placingStructure, setPlacingStructure] = useState(false)
     const [structurePosition, setStructurePosition] = useState<[number, number] | null>(null)
+    const [editingStructure, setEditingStructure] = useState<MapFeatureData | null>(null)
     const mapRef = useRef<maplibregl.Map | null>(null)
     const tracksRef = useRef<TrackFeature[]>(tracks)
 
@@ -279,6 +280,11 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
             map={map}
             features={mapFeatures}
             layerVisibility={layerVisibility}
+            onFeatureClick={(feature) => {
+              if (feature.source === 'user') {
+                setEditingStructure(feature)
+              }
+            }}
           />
         )}
         {map && (
@@ -351,6 +357,114 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
             onSave={handleStructureSave}
             onCancel={() => setStructurePosition(null)}
           />
+        )}
+        {editingStructure && (
+          <div
+            className="absolute top-0 right-0 h-full w-80 bg-slate-900 border-l border-slate-700 flex flex-col z-20"
+            style={{ borderRadius: '2px' }}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
+              <span className="text-slate-100 text-sm font-semibold tracking-wide uppercase font-mono">
+                EDIT STRUCTURE
+              </span>
+              <button
+                onClick={() => setEditingStructure(null)}
+                className="text-slate-400 hover:text-slate-100 text-lg leading-none"
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            <div className="flex flex-col gap-4 px-4 py-4 flex-1 overflow-y-auto">
+              <div className="flex flex-col gap-1">
+                <label className="text-slate-400 text-xs font-mono uppercase tracking-widest">NAME</label>
+                <input
+                  type="text"
+                  defaultValue={editingStructure.name}
+                  id="edit-structure-name"
+                  className="bg-slate-800 border border-slate-700 text-slate-100 text-sm font-mono px-3 py-2 outline-none focus:border-slate-500 uppercase"
+                  style={{ borderRadius: '2px' }}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-slate-400 text-xs font-mono uppercase tracking-widest">DETAILS</label>
+                <textarea
+                  defaultValue={editingStructure.details ?? ''}
+                  id="edit-structure-details"
+                  rows={3}
+                  className="bg-slate-800 border border-slate-700 text-slate-100 text-sm font-mono px-3 py-2 outline-none focus:border-slate-500 resize-none"
+                  style={{ borderRadius: '2px' }}
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-slate-400 text-xs font-mono uppercase tracking-widest">COLOUR</label>
+                <div className="flex gap-2">
+                  {['#f59e0b','#ef4444','#3b82f6','#22c55e','#a855f7','#06b6d4'].map(c => (
+                    <button
+                      key={c}
+                      id={`edit-color-${c}`}
+                      className="w-8 h-8 border-2 transition-colors"
+                      style={{ backgroundColor: c, borderColor: editingStructure.color === c ? '#e2e8f0' : 'transparent', borderRadius: '2px' }}
+                      onClick={() => setEditingStructure(prev => prev ? { ...prev, color: c } : null)}
+                    />
+                  ))}
+                </div>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-slate-400 text-xs font-mono uppercase tracking-widest">POSITION</label>
+                <div className="bg-slate-800 border border-slate-700 text-slate-400 text-xs font-mono px-3 py-2" style={{ borderRadius: '2px' }}>
+                  {editingStructure.latitude.toFixed(6)}°N {editingStructure.longitude.toFixed(6)}°E
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 px-4 py-4 border-t border-slate-700">
+              <button
+                onClick={async () => {
+                  const name = (document.getElementById('edit-structure-name') as HTMLInputElement)?.value?.trim()
+                  const details = (document.getElementById('edit-structure-details') as HTMLTextAreaElement)?.value?.trim()
+                  if (!name) return
+                  try {
+                    await apiFetch(`/api/v1/map-features/${editingStructure.id}`, {
+                      method: 'PUT',
+                      body: JSON.stringify({ name, color: editingStructure.color, details }),
+                    })
+                    setEditingStructure(null)
+                    onMapFeatureCreated?.()
+                    showToast('STRUCTURE UPDATED', 'success')
+                  } catch {
+                    showToast('FAILED TO UPDATE STRUCTURE', 'error')
+                  }
+                }}
+                className="w-full py-2 text-xs font-mono tracking-widest uppercase bg-slate-700 border border-slate-500 text-slate-100 hover:bg-slate-600 transition-colors"
+                style={{ borderRadius: '2px' }}
+              >
+                SAVE CHANGES
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    await apiFetch(`/api/v1/map-features/${editingStructure.id}`, { method: 'DELETE' })
+                    setEditingStructure(null)
+                    onMapFeatureCreated?.()
+                    showToast('STRUCTURE DELETED', 'success')
+                  } catch {
+                    showToast('FAILED TO DELETE STRUCTURE', 'error')
+                  }
+                }}
+                className="w-full py-2 text-xs font-mono tracking-widest uppercase bg-slate-800 border border-red-900 text-red-400 hover:bg-red-950 transition-colors"
+                style={{ borderRadius: '2px' }}
+              >
+                DELETE
+              </button>
+              <button
+                onClick={() => setEditingStructure(null)}
+                className="w-full py-2 text-xs font-mono tracking-widest uppercase bg-slate-800 border border-slate-700 text-slate-400 hover:text-slate-200 transition-colors"
+                style={{ borderRadius: '2px' }}
+              >
+                CANCEL
+              </button>
+            </div>
+          </div>
         )}
         {selectedEntity && (
           <EntityDetailPanel
