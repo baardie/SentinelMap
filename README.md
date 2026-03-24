@@ -6,6 +6,28 @@
 
 SentinelMap is a full-stack systems engineering demonstration: a defence-grade situational awareness platform that ingests, correlates, and presents multi-source track data in real time. It demonstrates dual-source entity correlation, a classification-enforced data model, production-quality security architecture, and an air-gappable deployment.
 
+## Screenshots
+
+### Common Operating Picture — Full View
+![Full COP](docs/screenshots/full-cop.png)
+*Live dual-source tracking with vessels, aircraft, airports, military bases, airspace zones, AIS base stations, geofences, and real-time alerts.*
+
+### Track Replay with Timeline Scrubber
+![Track Replay](docs/screenshots/track-replay.png)
+*Historical track replay showing an aircraft's holding pattern. Timeline scrubber with play/pause and 1x–10x speed control.*
+
+### Structure Placement
+![Structure Placement](docs/screenshots/structure-placement.png)
+*Placing a custom checkpoint on the map — configurable name, type, colour, and notes. Alongside live airspace zones, military bases, and airports.*
+
+### Correlation Review Queue
+![Correlation Review](docs/screenshots/correlation-review.png)
+*Analyst review queue for mid-confidence entity correlations (0.3–0.6). Approve to merge entities, reject to keep separate. Rule breakdown shows matching criteria.*
+
+### Aid to Navigation Detail
+![AtoN Detail](docs/screenshots/aid-to-navigation.png)
+*Clickable AIS aids to navigation along the Humber estuary. Detail panel shows AtoN type, MMSI, position, and purpose.*
+
 ## Quick Start
 
 ### Prerequisites
@@ -41,7 +63,7 @@ Override the seed password via `SENTINELMAP_SEED_PASSWORD` in `.env`.
 | Mode | Description | Required |
 |---|---|---|
 | `Live` (default) | Real AIS via AISStream.io + real ADS-B via Airplanes.live | `AISSTREAM_API_KEY` for AIS |
-| `Simulated` | Deterministic simulated vessels and aircraft — no external calls | None |
+| `Simulated` | Replays real recorded tracks (14 vessels, 10 aircraft from UK waters) — no external calls | None |
 | `Hybrid` | Live data with simulated fallback on connection failure | `AISSTREAM_API_KEY` for AIS |
 
 Set `SENTINELMAP_DATA_MODE` in `.env`. Per-source overrides available via `SENTINELMAP_AIS_MODE` and `SENTINELMAP_ADSB_MODE`. ADS-B requires no API key.
