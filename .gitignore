@@ -26,6 +26,13 @@ dist/
 # Claude Code
 .claude/
 
+# Superpowers
+docs/superpowers/
+.superpowers/
+
+# ADRs
+docs/adr/
+
 # OS
 .DS_Store
 Thumbs.db
