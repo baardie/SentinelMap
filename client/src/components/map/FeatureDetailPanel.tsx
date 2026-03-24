@@ -161,8 +161,8 @@ export function FeatureDetailPanel({ feature, onClose, onEdit }: FeatureDetailPa
           </span>
         </div>
 
-        {/* Details (if present) */}
-        {feature.details && (
+        {/* Details (if present) — skip for AIS features which have dedicated rendering below */}
+        {feature.details && feature.featureType !== 'AidToNavigation' && feature.featureType !== 'AisBaseStation' && (
           <div className="flex flex-col gap-1">
             <label className="text-slate-500 text-xs font-mono uppercase tracking-widest">DETAILS</label>
             {detailsObj ? (
