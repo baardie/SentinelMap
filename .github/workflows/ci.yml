@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  backend:
+    name: .NET Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - run: dotnet restore SentinelMap.slnx
+      - run: dotnet build SentinelMap.slnx --no-restore -c Release
+      - run: dotnet test SentinelMap.slnx --no-build -c Release --verbosity normal
+
+  frontend:
+    name: Frontend Lint & Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: client/package-lock.json
+      - run: npm ci
+      - run: npx tsc -b --noEmit
+      - run: npm run build
