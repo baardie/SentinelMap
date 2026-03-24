@@ -182,10 +182,23 @@ graph LR
 |---|---|
 | Backend | .NET 9, ASP.NET Core, EF Core 9, FluentValidation |
 | Frontend | React 19, TypeScript, Vite, Tailwind CSS v4, MapLibre GL JS, shadcn/ui |
+| State Management | React Context + Hooks — server-pushed via SignalR (no client polling) |
 | Database | PostgreSQL 16 + PostGIS 3.4 (spatial queries, partitioned tables) |
 | Cache / Messaging | Redis 7 (pub/sub, dedup, geofence membership, SignalR backplane) |
 | Reverse Proxy | Caddy 2 (TLS, CSP headers, WebSocket proxying) |
 | Basemap | PMTiles + Protomaps (self-hosted vector tiles, fully air-gappable) |
+
+### Frontend State Architecture
+
+No Redux or external state library — state flows from the server via SignalR, not from client-side stores:
+
+- **`AuthContext`** — JWT lifecycle (login, refresh, logout), user role/clearance, auto-refresh timer
+- **`ToastContext`** — transient notification queue with auto-dismiss
+- **`useTrackHub`** — SignalR connection to `/hubs/tracks`, receives `TrackUpdate` and `AlertTriggered` events, maintains a `Map<entityId, TrackFeature>` for O(1) upserts
+- **Map layers** — each layer component (`MaritimeTrackLayer`, `AviationTrackLayer`, `GeofenceLayer`, etc.) owns its own MapLibre sources/layers via `useEffect` lifecycle, reading props from the parent `MapContainer`
+- **Entity detail / enrichment** — fetched on-demand from REST API when a user clicks an entity, not pre-loaded
+
+This is deliberate: in a real-time COP, the server is the source of truth. SignalR pushes ~500 updates/second; a client-side store would just be a stale mirror. React's built-in state + context is sufficient when the server drives updates.
 
 ## Project Structure
 
