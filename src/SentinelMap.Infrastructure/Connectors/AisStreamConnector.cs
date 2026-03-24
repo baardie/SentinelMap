@@ -44,7 +44,8 @@ public class AisStreamConnector : ISourceConnector
         {
             APIKey = _apiKey,
             // UK + NI + English Channel + Irish Sea bounding box
-            BoundingBoxes = new[] { new[] { new[] { -11.0, 49.0 }, new[] { 2.5, 61.0 } } },
+            // AISStream format: [[lat_min, lon_min], [lat_max, lon_max]]
+            BoundingBoxes = new[] { new[] { new[] { 49.0, -11.0 }, new[] { 61.0, 2.5 } } },
             FilterMessageTypes = new[] { "PositionReport", "ShipStaticData", "StandardClassBPositionReport", "BaseStationReport", "AidsToNavigationReport", "SafetyBroadcastMessage" }
         });
 
