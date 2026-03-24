@@ -160,7 +160,7 @@ public static class EntityEndpoints
             }
             else if (icao is not null)
             {
-                externalUrl = $"https://www.planespotters.net/hex/{icao}";
+                externalUrl = $"https://www.planespotters.net/hex/{icao.ToUpperInvariant()}";
             }
         }
 
