@@ -244,8 +244,8 @@ The vector basemap is downloaded separately via the Protomaps planet build. Choo
 
 | Preset | Coverage | Max Zoom | Size | Command |
 |--------|----------|----------|------|---------|
+| `uk` | UK + Ireland **(default)** | 12 | ~400 MB | `bash scripts/download-pmtiles.sh` |
 | `mersey` | Liverpool / Mersey estuary | 14 | ~75 MB | `bash scripts/download-pmtiles.sh mersey` |
-| `uk` | UK + Ireland (default) | 12 | ~400 MB | `bash scripts/download-pmtiles.sh` |
 | `europe` | Western Europe | 10 | ~1.5 GB | `bash scripts/download-pmtiles.sh europe` |
 | `world` | Global | 8 | ~2 GB | `bash scripts/download-pmtiles.sh world` |
 
