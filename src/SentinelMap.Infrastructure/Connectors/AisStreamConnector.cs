@@ -162,6 +162,44 @@ public class AisStreamConnector : ISourceConnector
         var callsign = staticData["CallSign"]?.GetValue<string>();
         var imo = staticData["ImoNumber"]?.GetValue<int>();
         var shipType = staticData["Type"]?.GetValue<int>();
+        var destination = staticData["Destination"]?.GetValue<string>();
+        var draught = staticData["MaximumStaticDraught"]?.GetValue<double>();
+
+        // ETA fields
+        var etaNode = staticData["Eta"];
+        string? eta = null;
+        if (etaNode is not null)
+        {
+            var month = etaNode["Month"]?.GetValue<int>() ?? 0;
+            var day = etaNode["Day"]?.GetValue<int>() ?? 0;
+            var hour = etaNode["Hour"]?.GetValue<int>() ?? 0;
+            var minute = etaNode["Minute"]?.GetValue<int>() ?? 0;
+            if (month > 0 && day > 0)
+            {
+                var monthName = new DateTime(2000, Math.Clamp(month, 1, 12), 1).ToString("MMM");
+                eta = $"{monthName} {day} {hour:D2}:{minute:D2}";
+            }
+        }
+
+        // Dimension fields
+        var dimNode = staticData["Dimension"];
+        int? length = null;
+        int? beam = null;
+        if (dimNode is not null)
+        {
+            var a = dimNode["A"]?.GetValue<int>() ?? 0;
+            var b = dimNode["B"]?.GetValue<int>() ?? 0;
+            var c = dimNode["C"]?.GetValue<int>() ?? 0;
+            var d = dimNode["D"]?.GetValue<int>() ?? 0;
+            if (a + b > 0) length = a + b;
+            if (c + d > 0) beam = c + d;
+        }
+
+        // Clean up destination (trim whitespace, treat empty/@ as null)
+        if (!string.IsNullOrWhiteSpace(destination) && destination.Trim() != "@")
+            destination = destination.Trim();
+        else
+            destination = null;
 
         return new Observation
         {
@@ -173,9 +211,14 @@ public class AisStreamConnector : ISourceConnector
             {
                 displayName = name,
                 callsign,
-                imoNumber = imo,
-                aisShipType = shipType,
-                vesselType = MapAisShipType(shipType),
+                imo = imo?.ToString(),
+                shipTypeCode = shipType,
+                vesselType = shipType.HasValue ? GetShipTypeName(shipType.Value) : MapAisShipType(shipType),
+                destination,
+                eta,
+                draught = draught.HasValue ? Math.Round(draught.Value / 10.0, 1) : (double?)null,
+                length,
+                beam,
             }),
         };
     }
@@ -250,6 +293,34 @@ public class AisStreamConnector : ISourceConnector
             }),
         };
     }
+
+    private static string GetShipTypeName(int code) => code switch
+    {
+        20 => "Wing in Ground",
+        30 => "Fishing",
+        31 => "Towing",
+        32 => "Towing (Large)",
+        33 => "Dredging/Underwater Ops",
+        34 => "Diving Ops",
+        35 => "Military Ops",
+        36 => "Sailing",
+        37 => "Pleasure Craft",
+        40 or 41 or 42 or 43 or 44 or 45 or 46 or 47 or 48 or 49 => "High Speed Craft",
+        50 => "Pilot Vessel",
+        51 => "Search and Rescue",
+        52 => "Tug",
+        53 => "Port Tender",
+        54 => "Anti-Pollution",
+        55 => "Law Enforcement",
+        56 or 57 => "Spare (Local)",
+        58 => "Medical Transport",
+        59 => "Noncombatant (RR)",
+        60 or 61 or 62 or 63 or 64 or 65 or 66 or 67 or 68 or 69 => "Passenger",
+        70 or 71 or 72 or 73 or 74 or 75 or 76 or 77 or 78 or 79 => "Cargo",
+        80 or 81 or 82 or 83 or 84 or 85 or 86 or 87 or 88 or 89 => "Tanker",
+        90 or 91 or 92 or 93 or 94 or 95 or 96 or 97 or 98 or 99 => "Other",
+        _ => "Unknown",
+    };
 
     private static string MapAisShipType(int? aisType) => aisType switch
     {

@@ -31,7 +31,14 @@ public static class EntityEndpoints
             .OrderByDescending(o => o.ObservedAt)
             .FirstOrDefaultAsync(ct);
 
-        var enrichment = BuildEnrichment(entity.Type.ToString(), entity.Identifiers, latestObs?.RawData);
+        // Get latest static data observation (has destination/dimensions from ShipStaticData)
+        var latestStaticRaw = await db.Observations
+            .Where(o => o.EntityId == id && o.RawData != null && o.RawData.Contains("destination"))
+            .OrderByDescending(o => o.ObservedAt)
+            .Select(o => o.RawData)
+            .FirstOrDefaultAsync(ct);
+
+        var enrichment = BuildEnrichment(entity.Type.ToString(), entity.Identifiers, latestObs?.RawData, latestStaticRaw);
 
         var speedKnots = entity.LastSpeedMps.HasValue
             ? Math.Round(entity.LastSpeedMps.Value * 1.94384, 1)
@@ -98,7 +105,8 @@ public static class EntityEndpoints
     private static object BuildEnrichment(
         string entityType,
         IEnumerable<Domain.Entities.EntityIdentifier> identifiers,
-        string? rawDataJson)
+        string? rawDataJson,
+        string? staticDataJson = null)
     {
         string? vesselType = null;
         string? aircraftType = null;
@@ -110,6 +118,11 @@ public static class EntityEndpoints
         double? altitude = null;
         string? photoUrl = null;
         string? externalUrl = null;
+        string? destination = null;
+        string? eta = null;
+        double? draught = null;
+        int? length = null;
+        int? beam = null;
 
         // Try to extract enrichment from RawData JSON
         if (!string.IsNullOrEmpty(rawDataJson))
@@ -125,6 +138,11 @@ public static class EntityEndpoints
                 registration = TryGetString(root, "Registration") ?? TryGetString(root, "registration");
                 squawk = TryGetString(root, "Squawk") ?? TryGetString(root, "squawk");
                 aircraftType = TryGetString(root, "AircraftType") ?? TryGetString(root, "aircraftType") ?? TryGetString(root, "category");
+                destination = TryGetString(root, "destination");
+                eta = TryGetString(root, "eta");
+                draught = TryGetDouble(root, "draught");
+                length = TryGetInt(root, "length");
+                beam = TryGetInt(root, "beam");
 
                 if (root.TryGetProperty("Altitude", out var alt) || root.TryGetProperty("altitude", out alt) || root.TryGetProperty("alt", out alt))
                 {
@@ -135,6 +153,29 @@ public static class EntityEndpoints
             catch
             {
                 // If RawData is malformed, skip enrichment
+            }
+        }
+
+        // Merge fields from static data observation (ShipStaticData has destination/dimensions)
+        if (!string.IsNullOrEmpty(staticDataJson))
+        {
+            try
+            {
+                using var staticDoc = JsonDocument.Parse(staticDataJson);
+                var sRoot = staticDoc.RootElement;
+
+                destination ??= TryGetString(sRoot, "destination");
+                eta ??= TryGetString(sRoot, "eta");
+                draught ??= TryGetDouble(sRoot, "draught");
+                length ??= TryGetInt(sRoot, "length");
+                beam ??= TryGetInt(sRoot, "beam");
+                vesselType ??= TryGetString(sRoot, "vesselType");
+                callsign ??= TryGetString(sRoot, "callsign");
+                imo ??= TryGetString(sRoot, "imo");
+            }
+            catch
+            {
+                // If static data is malformed, skip
             }
         }
 
@@ -175,7 +216,12 @@ public static class EntityEndpoints
             Callsign = callsign,
             Registration = registration,
             Squawk = squawk,
-            Altitude = altitude
+            Altitude = altitude,
+            Destination = destination,
+            Eta = eta,
+            Draught = draught,
+            Length = length,
+            Beam = beam
         };
     }
 
@@ -186,6 +232,20 @@ public static class EntityEndpoints
             var val = prop.GetString();
             return string.IsNullOrWhiteSpace(val) ? null : val;
         }
+        return null;
+    }
+
+    private static double? TryGetDouble(JsonElement element, string propertyName)
+    {
+        if (element.TryGetProperty(propertyName, out var prop) && prop.ValueKind == JsonValueKind.Number)
+            return prop.GetDouble();
+        return null;
+    }
+
+    private static int? TryGetInt(JsonElement element, string propertyName)
+    {
+        if (element.TryGetProperty(propertyName, out var prop) && prop.ValueKind == JsonValueKind.Number)
+            return prop.GetInt32();
         return null;
     }
 

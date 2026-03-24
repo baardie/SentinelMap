@@ -234,6 +234,44 @@ export function EntityDetailPanel({ entity, onClose, onCreateGeofence, onToggleT
               </div>
             )}
 
+            {/* Destination */}
+            {entity.entityType === 'Vessel' && enrichment.destination && (
+              <div className="flex justify-between py-1">
+                <span className="text-slate-400">Destination</span>
+                <span className="text-slate-100 uppercase">{enrichment.destination}</span>
+              </div>
+            )}
+
+            {/* ETA */}
+            {entity.entityType === 'Vessel' && enrichment.eta && (
+              <div className="flex justify-between py-1">
+                <span className="text-slate-400">ETA</span>
+                <span className="text-slate-100">{enrichment.eta}</span>
+              </div>
+            )}
+
+            {/* Dimensions */}
+            {entity.entityType === 'Vessel' && (enrichment.length != null || enrichment.beam != null) && (
+              <div className="flex justify-between py-1">
+                <span className="text-slate-400">Dimensions</span>
+                <span className="text-slate-100">
+                  {enrichment.length != null && enrichment.beam != null
+                    ? `${enrichment.length}m \u00d7 ${enrichment.beam}m`
+                    : enrichment.length != null
+                      ? `${enrichment.length}m L`
+                      : `${enrichment.beam}m B`}
+                </span>
+              </div>
+            )}
+
+            {/* Draught */}
+            {entity.entityType === 'Vessel' && enrichment.draught != null && (
+              <div className="flex justify-between py-1">
+                <span className="text-slate-400">Draught</span>
+                <span className="text-slate-100">{enrichment.draught}m</span>
+              </div>
+            )}
+
             {/* Aircraft Type */}
             {entity.entityType === 'Aircraft' && (
               <div className="flex justify-between py-1">

@@ -21,6 +21,8 @@ export interface TrackUpdate {
   displayName: string | null
   vesselType: string | null
   aircraftType: string | null
+  emergency: string | null
+  isMilitary: boolean
 }
 
 export interface TrackProperties {
@@ -34,6 +36,8 @@ export interface TrackProperties {
   displayName: string
   lastUpdated: string
   staleness: number
+  emergency: string | null
+  isMilitary: boolean
 }
 
 export type TrackFeature = Feature<Point, TrackProperties>
@@ -91,6 +95,11 @@ export interface EntityDetail {
     registration: string | null
     squawk: string | null
     altitude: number | null
+    destination: string | null
+    eta: string | null
+    draught: number | null
+    length: number | null
+    beam: number | null
   }
 }
 
