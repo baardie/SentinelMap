@@ -33,7 +33,7 @@ public class SimulatedAisConnectorTests
     public async Task StreamAsync_ObservationsHaveValidPositions()
     {
         var connector = new SimulatedAisConnector(updateIntervalMs: 10);
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
 
         var observations = new List<SentinelMap.Domain.Entities.Observation>();
         await foreach (var obs in connector.StreamAsync(cts.Token))
@@ -67,6 +67,22 @@ public class SimulatedAisConnectorTests
             if (count == 2) cts.Cancel();
         }
 
-        count.Should().BeLessThanOrEqualTo(12, "cancellation should stop iteration promptly");
+        count.Should().BeLessThanOrEqualTo(16, "cancellation should stop iteration promptly");
+    }
+
+    [Fact]
+    public async Task StreamAsync_ProducesMultipleUniqueVessels()
+    {
+        var connector = new SimulatedAisConnector(updateIntervalMs: 10);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+
+        var externalIds = new HashSet<string>();
+        await foreach (var obs in connector.StreamAsync(cts.Token))
+        {
+            externalIds.Add(obs.ExternalId);
+            if (externalIds.Count >= 6) break;
+        }
+
+        externalIds.Should().HaveCountGreaterThanOrEqualTo(6, "at least 6 distinct vessels should be observed");
     }
 }

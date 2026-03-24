@@ -25,4 +25,9 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Connectors\SampleData\ais-tracks.json" />
+    <EmbeddedResource Include="Connectors\SampleData\adsb-tracks.json" />
+  </ItemGroup>
+
 </Project>
