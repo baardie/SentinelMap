@@ -73,6 +73,8 @@ public class CorrelationProcessor
         }
 
         // Cold path: check for existing entity match via correlation rules
+        // For ADS-B, only use DirectIdMatch — aircraft don't share identifiers and
+        // fuzzy/spatial matching causes false merges between different aircraft
         var searchRadius = Math.Max(5000, (msg.SpeedMps ?? 5) * 900 * 1.2); // 15min window
         var candidates = await _entityRepo.FindCandidatesAsync(position, searchRadius, TimeSpan.FromHours(24), ct);
 
@@ -85,6 +87,10 @@ public class CorrelationProcessor
         {
             foreach (var rule in _correlationRules)
             {
+                // Skip fuzzy and spatial rules for aircraft — only direct ID match
+                if (msg.SourceType == "ADSB" && rule is not DirectIdMatchRule)
+                    continue;
+
                 var score = await rule.EvaluateAsync(msg.SourceType, msg.ExternalId, msg.DisplayName, position, candidate, ct);
                 if (score != null)
                 {

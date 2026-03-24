@@ -157,7 +157,7 @@ public class AdsbLiveConnector : ISourceConnector
             return new Observation
             {
                 SourceType = "ADSB",
-                ExternalId = hex,
+                ExternalId = hex.ToUpperInvariant(),
                 Position = new Point(lon, lat) { SRID = 4326 },
                 SpeedMps = speedMps,
                 Heading = heading,
