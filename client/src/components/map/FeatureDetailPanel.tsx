@@ -1,5 +1,40 @@
 import type { MapFeatureData } from '../../types'
 
+const ATON_TYPES: Record<number, { name: string; category: string }> = {
+  0: { name: 'Not Specified', category: 'General' },
+  1: { name: 'Reference Point', category: 'General' },
+  2: { name: 'RACON (Radar Beacon)', category: 'General' },
+  3: { name: 'Fixed Structure (Platform/Wind Farm)', category: 'General' },
+  4: { name: 'Emergency Wreck Marking Buoy', category: 'General' },
+  5: { name: 'Light (No Sectors)', category: 'Fixed AtoN' },
+  6: { name: 'Light (With Sectors)', category: 'Fixed AtoN' },
+  7: { name: 'Leading Light Front', category: 'Fixed AtoN' },
+  8: { name: 'Leading Light Rear', category: 'Fixed AtoN' },
+  9: { name: 'Beacon, Cardinal North', category: 'Fixed AtoN' },
+  10: { name: 'Beacon, Cardinal East', category: 'Fixed AtoN' },
+  11: { name: 'Beacon, Cardinal South', category: 'Fixed AtoN' },
+  12: { name: 'Beacon, Cardinal West', category: 'Fixed AtoN' },
+  13: { name: 'Beacon, Port Hand', category: 'Fixed AtoN' },
+  14: { name: 'Beacon, Starboard Hand', category: 'Fixed AtoN' },
+  15: { name: 'Beacon, Preferred Channel Port', category: 'Fixed AtoN' },
+  16: { name: 'Beacon, Preferred Channel Starboard', category: 'Fixed AtoN' },
+  17: { name: 'Beacon, Isolated Danger', category: 'Fixed AtoN' },
+  18: { name: 'Beacon, Safe Water', category: 'Fixed AtoN' },
+  19: { name: 'Beacon, Special Mark', category: 'Fixed AtoN' },
+  20: { name: 'Cardinal Mark North', category: 'Floating AtoN' },
+  21: { name: 'Cardinal Mark East', category: 'Floating AtoN' },
+  22: { name: 'Cardinal Mark South', category: 'Floating AtoN' },
+  23: { name: 'Cardinal Mark West', category: 'Floating AtoN' },
+  24: { name: 'Port Hand Mark', category: 'Floating AtoN' },
+  25: { name: 'Starboard Hand Mark', category: 'Floating AtoN' },
+  26: { name: 'Preferred Channel Port Hand', category: 'Floating AtoN' },
+  27: { name: 'Preferred Channel Starboard Hand', category: 'Floating AtoN' },
+  28: { name: 'Isolated Danger', category: 'Floating AtoN' },
+  29: { name: 'Safe Water', category: 'Floating AtoN' },
+  30: { name: 'Special Mark', category: 'Floating AtoN' },
+  31: { name: 'Light Vessel / LANBY / Rig', category: 'Floating AtoN' },
+}
+
 interface FeatureDetailPanelProps {
   feature: MapFeatureData
   onClose: () => void
@@ -169,24 +204,54 @@ export function FeatureDetailPanel({ feature, onClose, onEdit }: FeatureDetailPa
         )}
 
         {feature.featureType === 'AisBaseStation' && (
-          <div className="flex flex-col gap-1">
-            <label className="text-slate-500 text-xs font-mono uppercase tracking-widest">COVERAGE</label>
-            <p className="text-slate-400 text-xs leading-relaxed">
-              Typical VHF range: 20-40 nautical miles. Station provides
-              real-time vessel tracking within its coverage area.
-            </p>
-          </div>
+          <>
+            {detailsObj?.mmsi && (
+              <div className="flex flex-col gap-1">
+                <label className="text-slate-500 text-xs font-mono uppercase tracking-widest">MMSI</label>
+                <span className="text-slate-300 text-xs font-mono">{detailsObj.mmsi}</span>
+              </div>
+            )}
+            <div className="flex flex-col gap-1">
+              <label className="text-slate-500 text-xs font-mono uppercase tracking-widest">COVERAGE</label>
+              <p className="text-slate-400 text-xs leading-relaxed">
+                Typical VHF range: 20-40 nautical miles. Station provides
+                real-time vessel tracking within its coverage area.
+              </p>
+            </div>
+          </>
         )}
 
-        {feature.featureType === 'AidToNavigation' && (
-          <div className="flex flex-col gap-1">
-            <label className="text-slate-500 text-xs font-mono uppercase tracking-widest">PURPOSE</label>
-            <p className="text-slate-400 text-xs leading-relaxed">
-              Navigation marker — may indicate channel boundaries, hazards,
-              anchorage areas, or port approach waypoints.
-            </p>
-          </div>
-        )}
+        {feature.featureType === 'AidToNavigation' && (() => {
+          const aidType = detailsObj?.aidType != null ? Number(detailsObj.aidType) : null
+          const atonInfo = aidType != null ? ATON_TYPES[aidType] : null
+          return (
+            <>
+              {atonInfo && (
+                <div className="flex flex-col gap-1">
+                  <label className="text-slate-500 text-xs font-mono uppercase tracking-widest">AID TYPE</label>
+                  <span className="text-slate-100 text-xs font-mono">{atonInfo.name}</span>
+                  <span className="text-slate-500 text-xs font-mono">{atonInfo.category}</span>
+                </div>
+              )}
+              {detailsObj?.mmsi && (
+                <div className="flex flex-col gap-1">
+                  <label className="text-slate-500 text-xs font-mono uppercase tracking-widest">MMSI</label>
+                  <span className="text-slate-300 text-xs font-mono">{detailsObj.mmsi}</span>
+                </div>
+              )}
+              <div className="flex flex-col gap-1">
+                <label className="text-slate-500 text-xs font-mono uppercase tracking-widest">PURPOSE</label>
+                <p className="text-slate-400 text-xs leading-relaxed">
+                  {atonInfo?.category === 'Floating AtoN'
+                    ? 'Floating navigation aid — buoy or light vessel marking channels, hazards, or safe water. Position may shift with tide and weather.'
+                    : atonInfo?.category === 'Fixed AtoN'
+                    ? 'Fixed navigation aid — beacon or light structure permanently positioned to mark channels, cardinal directions, or isolated dangers.'
+                    : 'Navigation marker — indicates channel boundaries, hazards, anchorage areas, or port approach waypoints.'}
+                </p>
+              </div>
+            </>
+          )
+        })()}
       </div>
 
       {/* Footer */}
