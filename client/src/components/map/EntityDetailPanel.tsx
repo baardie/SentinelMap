@@ -114,12 +114,17 @@ export function EntityDetailPanel({ entity, onClose, onCreateGeofence, onToggleT
         watchlistId = created.id
       }
 
+      // Use real external identifier (MMSI/ICAO) from enrichment, not internal UUID
+      const identifier = detail?.identifiers?.[0]
+      const idType = identifier?.type ?? (entity.entityType === 'Aircraft' ? 'ICAO' : 'MMSI')
+      const idValue = identifier?.value ?? entity.entityId
+
       await apiFetch(`/api/v1/watchlists/${watchlistId}/entries`, {
         method: 'POST',
         body: JSON.stringify({
-          identifierType: entity.entityType === 'Aircraft' ? 'ICAO' : 'MMSI',
-          identifierValue: entity.entityId,
-          reason: 'Added from entity detail panel',
+          identifierType: idType,
+          identifierValue: idValue,
+          reason: `Added from entity detail panel — ${entity.displayName || 'Unknown'}`,
           severity: 'High'
         })
       })
