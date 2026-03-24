@@ -154,13 +154,8 @@ public class CorrelationProcessor
                     linkAlert.Id, matchedEntity.Id, msg.ExternalId);
             }
 
-            matchedEntity.LastKnownPosition = position;
-            matchedEntity.LastSpeedMps = msg.SpeedMps;
-            matchedEntity.LastHeading = msg.Heading;
-            matchedEntity.LastSeen = msg.ObservedAt;
-            matchedEntity.UpdatedAt = DateTimeOffset.UtcNow;
-
-            await _entityRepo.UpdateAsync(matchedEntity, ct);
+            // Use raw SQL to avoid concurrency exceptions from tracked entity races
+            await _entityRepo.UpdatePositionAsync(matchedEntity.Id, position, msg.SpeedMps, msg.Heading, msg.ObservedAt, ct);
             await _db.StringSetAsync(cacheKey, matchedEntity.Id.ToString(), CacheTtl, When.Always, CommandFlags.None);
             await LinkObservationToEntityAsync(msg.ObservationId, matchedEntity.Id, msg.ObservedAt, ct);
 

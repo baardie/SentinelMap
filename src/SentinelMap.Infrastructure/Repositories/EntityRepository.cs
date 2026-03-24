@@ -51,6 +51,7 @@ public class EntityRepository : IEntityRepository
                   last_speed_mps = {2},
                   last_heading = {3},
                   last_seen = {4},
+                  status = 'Active',
                   updated_at = now()
               WHERE id = {5}",
             parameters,
