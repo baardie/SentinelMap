@@ -42,9 +42,8 @@ export function PredictionLayer({ map, tracks, visible, predictionMinutes = 15 }
       layout: { visibility: 'none' },
       paint: {
         'line-color': '#ffffff',
-        'line-opacity': 0.3,
-        'line-width': 1.5,
-        'line-dasharray': [4, 4],
+        'line-opacity': 0.15,
+        'line-width': 1,
       },
     })
 
@@ -54,9 +53,9 @@ export function PredictionLayer({ map, tracks, visible, predictionMinutes = 15 }
       source: DOT_SOURCE,
       layout: { visibility: 'none' },
       paint: {
-        'circle-radius': 3,
+        'circle-radius': 2,
         'circle-color': '#ffffff',
-        'circle-opacity': 0.3,
+        'circle-opacity': 0.15,
       },
     })
 

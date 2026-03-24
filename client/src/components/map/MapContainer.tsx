@@ -16,6 +16,7 @@ import { StructureConfigPanel } from './StructureConfigPanel'
 import { LayerControlPanel } from './LayerControlPanel'
 import { PredictionLayer } from './PredictionLayer'
 import { ExportButton } from './ExportButton'
+import { FeatureDetailPanel } from './FeatureDetailPanel'
 import { CityLabelsLayer } from './CityLabelsLayer'
 import { TrackReplayLayer } from '../timeline/TrackReplayLayer'
 import { TimelineScrubber } from '../timeline/TimelineScrubber'
@@ -93,6 +94,7 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
     const [placingStructure, setPlacingStructure] = useState(false)
     const [structurePosition, setStructurePosition] = useState<[number, number] | null>(null)
     const [editingStructure, setEditingStructure] = useState<MapFeatureData | null>(null)
+    const [selectedFeature, setSelectedFeature] = useState<MapFeatureData | null>(null)
     const mapRef = useRef<maplibregl.Map | null>(null)
     const tracksRef = useRef<TrackFeature[]>(tracks)
 
@@ -281,9 +283,7 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
             features={mapFeatures}
             layerVisibility={layerVisibility}
             onFeatureClick={(feature) => {
-              if (feature.source === 'user') {
-                setEditingStructure(feature)
-              }
+              setSelectedFeature(feature)
             }}
           />
         )}
@@ -356,6 +356,16 @@ export const MapContainer = forwardRef<MapContainerHandle, MapContainerProps>(
             position={structurePosition}
             onSave={handleStructureSave}
             onCancel={() => setStructurePosition(null)}
+          />
+        )}
+        {selectedFeature && !editingStructure && (
+          <FeatureDetailPanel
+            feature={selectedFeature}
+            onClose={() => setSelectedFeature(null)}
+            onEdit={selectedFeature.source === 'user' ? () => {
+              setEditingStructure(selectedFeature)
+              setSelectedFeature(null)
+            } : undefined}
           />
         )}
         {editingStructure && (
