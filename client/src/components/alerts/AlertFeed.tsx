@@ -62,8 +62,8 @@ function shortType(type: string): string {
 export function AlertFeed({ alerts, onAlertClick }: AlertFeedProps) {
   const [expanded, setExpanded] = useState(true)
   const [showFilters, setShowFilters] = useState(false)
-  const [enabledTypes, setEnabledTypes] = useState<Set<string>>(new Set(ALERT_TYPES))
-  const [enabledSeverities, setEnabledSeverities] = useState<Set<string>>(new Set(SEVERITY_LEVELS))
+  const [enabledTypes, setEnabledTypes] = useState<Set<string>>(new Set(ALERT_TYPES.filter(t => t !== 'CorrelationLink')))
+  const [enabledSeverities, setEnabledSeverities] = useState<Set<string>>(new Set(SEVERITY_LEVELS.filter(s => s !== 'Low')))
 
   const toggleType = (type: string) => {
     setEnabledTypes(prev => {
