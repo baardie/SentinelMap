@@ -2,11 +2,9 @@
 
 > OSINT aggregation and correlation platform fusing real-time maritime (AIS) and aviation (ADS-B) data into a unified Common Operating Picture.
 
-SentinelMap is a full-stack systems engineering demonstration: a defence-grade situational awareness platform that ingests, correlates, and presents multi-source track data in real time. It demonstrates dual-source entity correlation, a classification-enforced data model, production-quality security architecture, and an air-gappable deployment — built as a portfolio artefact targeting senior systems/software engineering roles in the defence and security sector.
+**Author:** Luke Baard — [LinkedIn](https://www.linkedin.com/in/lukebaard) | [GitHub](https://github.com/baardie)
 
-## Demo
-
-Run `docker compose up`, open `http://localhost`, and log in. Within seconds you will see 12 vessels navigating the Mersey estuary and 8 aircraft operating over Liverpool — all simulated, no API keys required. Within three minutes the demo scenario fires automatically: a vessel triggers a geofence breach on the port approach zone, a watchlist-flagged aircraft generates a match alert, a vessel goes AIS-dark after exceeding the silence threshold, and a speed anomaly fires for an out-of-envelope observation. Alerts appear in the collapsible feed in real time via SignalR. No configuration, no external dependencies.
+SentinelMap is a full-stack systems engineering demonstration: a defence-grade situational awareness platform that ingests, correlates, and presents multi-source track data in real time. It demonstrates dual-source entity correlation, a classification-enforced data model, production-quality security architecture, and an air-gappable deployment.
 
 ## Quick Start
 
@@ -14,16 +12,19 @@ Run `docker compose up`, open `http://localhost`, and log in. Within seconds you
 
 - Docker Desktop (or Docker Engine + Compose v2)
 - Git
+- AISStream.io API key (free — [register here](https://aisstream.io)) for live vessel tracking
 
 ### Run
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/baardie/SentinelMap.git
 cd SentinelMap
+cp .env.example .env
+# Add your AISStream API key to .env
 docker compose up
 ```
 
-Open `http://localhost` and log in.
+Open `http://localhost` and log in. Live AIS vessel data and ADS-B aircraft data will begin streaming within seconds.
 
 ### Demo Accounts
 
@@ -33,19 +34,81 @@ Open `http://localhost` and log in.
 | analyst@sentinel.local | Analyst | OFFICIAL-SENSITIVE | `SentinelDemo123!` |
 | viewer@sentinel.local | Viewer | OFFICIAL | `SentinelDemo123!` |
 
-The classification banner updates per account. The Viewer account cannot see SECRET or OFFICIAL-SENSITIVE tracks.
-
 Override the seed password via `SENTINELMAP_SEED_PASSWORD` in `.env`.
 
 ### Data Modes
 
-| Mode | Description | Required Env Var |
+| Mode | Description | Required |
 |---|---|---|
-| `Simulated` (default) | Deterministic simulated vessels and aircraft — no external calls | None |
-| `Live` | Real AIS via AISStream.io WebSocket; real ADS-B via Airplanes.live REST | `AISSTREAM_API_KEY` for AIS |
+| `Live` (default) | Real AIS via AISStream.io + real ADS-B via Airplanes.live | `AISSTREAM_API_KEY` for AIS |
+| `Simulated` | Deterministic simulated vessels and aircraft — no external calls | None |
 | `Hybrid` | Live data with simulated fallback on connection failure | `AISSTREAM_API_KEY` for AIS |
 
-Set `SENTINELMAP_DATA_MODE` in `.env`. Per-source overrides available via `SENTINELMAP_AIS_MODE` and `SENTINELMAP_ADSB_MODE`.
+Set `SENTINELMAP_DATA_MODE` in `.env`. Per-source overrides available via `SENTINELMAP_AIS_MODE` and `SENTINELMAP_ADSB_MODE`. ADS-B requires no API key.
+
+## Features
+
+### Real-Time Dual-Source Tracking
+
+- **Maritime (AIS):** Live vessel tracking via AISStream.io WebSocket. Heading-oriented vessel icons colour-coded by type (cargo, tanker, passenger, fishing, tug, pilot, military). Entity detail panel shows MMSI, flag state (200+ MID prefixes), vessel type, destination, ETA, dimensions, draught, IMO, callsign.
+- **Aviation (ADS-B):** Live aircraft tracking via Airplanes.live REST polling. Aircraft type codes (B738, A320, etc.), registration, squawk, altitude, vertical rate. Military aircraft flagged via dbFlags — rendered orange on map. Emergency squawk detection (7500/7600/7700) triggers instant Critical alerts.
+
+### Entity Correlation Engine
+
+Hot-path Redis cache resolves 90%+ of observations without a database query. Cold-path correlation uses Jaro-Winkler fuzzy name matching (threshold 0.75), speed-scaled spatial radius, and noisy-OR confidence aggregation. Mid-confidence matches (0.3–0.6) enter an analyst review queue for manual approve/reject.
+
+### Alerting System (8 alert types)
+
+| Alert | Severity | Trigger |
+|---|---|---|
+| Geofence Breach | High | PostGIS `ST_Within` with Redis set membership diffing |
+| Watchlist Match | Critical | O(1) Redis hash lookup with per-entity debounce |
+| AIS Dark | High | Configurable silence timeout (default 900s) |
+| Speed Anomaly | Medium | Type-specific thresholds (>50kt vessel, >600kt aircraft) |
+| Transponder Swap | High | MMSI/ICAO identifier change detection |
+| Correlation Link | Low | New data source linked to existing entity |
+| Route Deviation | Medium | Rolling 30-heading circular mean, >60° deviation threshold |
+| Emergency Squawk | Critical | 7500 (hijack), 7600 (comms failure), 7700 (emergency) |
+
+Alerts delivered via SignalR in real time. Filterable by type and severity. Webhook notifications with HMAC-SHA256 signed payloads.
+
+### Map Intelligence Layers
+
+- **AIS Base Stations** — live positions from AIS Message Type 4
+- **Aids to Navigation** — 31 AtoN types (buoys, beacons, lights, RACON, wrecks) from AIS Message Type 21
+- **UK Airports** — 20 airports with ICAO codes
+- **Military Installations** — 15 UK military bases (RAF, HMNB, BAE, AWE)
+- **Restricted Airspace** — CTRs, danger areas, MATZ, prohibited zones
+- **Custom Structures** — user-placed command posts, checkpoints, observation points
+- **Safety Broadcasts** — AIS safety messages displayed in dedicated TopBar panel
+- **City Labels** — 50 UK+Ireland locations with zoom-dependent visibility
+
+All layers toggleable via the LAYERS panel. Every feature clickable for detail panel.
+
+### Interactive Geofencing
+
+Drag-and-drop geofence creation: polygon draw mode or circle with configurable radius. Custom colours, fence types (Entry/Exit/Both), click-to-edit existing zones. Airspace zones (CTR, Danger, MATZ, Prohibited) rendered as styled overlays.
+
+### Track History & Replay
+
+Historical track API with timeline scrubber. Play/pause with 1x/2x/5x/10x speed. Animated replay showing full track (faded), traversed path (bright blue), and interpolated position marker. Dead reckoning prediction layer extrapolates future positions from current heading and speed.
+
+### Classification System
+
+Three-tier mock classification: `OFFICIAL`, `OFFICIAL-SENSITIVE`, `SECRET`. EF Core global query filters enforce clearance at the ORM layer. Workers use an unfiltered `SystemDbContext`. All exports include classification watermarks. UI banner reflects authenticated user's clearance.
+
+### Security
+
+- **Authentication:** RS256 JWT, 15-minute access tokens, refresh token rotation with family tracking
+- **Authorisation:** RBAC (Viewer/Analyst/Admin) via named ASP.NET Core policies
+- **Rate Limiting:** Auth: 10/min, API reads: 100/min
+- **Audit:** Two-path logging — sync for security events, async for operational
+- **Sessions:** Admin UI for active session management with force-revoke
+- **Transport:** CSP, CORS allowlist, Docker network isolation, Caddy TLS termination
+
+### Export
+
+CSV and GeoJSON export with classification watermark. Exports include all active entities with position, speed, heading, status, and type.
 
 ## Architecture
 
@@ -89,8 +152,6 @@ graph TB
     Redis -.->|"SignalR Backplane"| API
 ```
 
-All inter-service communication passes through Redis pub/sub — no service-to-service HTTP. Workers publish to Redis channels; the API SignalR hub consumes via the Redis backplane and pushes to WebSocket clients.
-
 ### Data Pipeline
 
 ```mermaid
@@ -115,127 +176,36 @@ graph LR
     end
 ```
 
-Ingestion and correlation are independent pipeline stages (ADR-002). A slow correlation query cannot backpressure ingestion. A hot-path Redis cache means 90%+ of observations skip the full correlation SQL query entirely.
-
-### Security Architecture
-
-```mermaid
-graph TB
-    subgraph "Trust Boundary 1: Internet"
-        Client["Browser"]
-    end
-
-    subgraph "Trust Boundary 2: DMZ"
-        Caddy["Caddy<br/>CSP + CORS + Rate Limit"]
-    end
-
-    subgraph "Trust Boundary 3: Application"
-        JWT["JWT RS256<br/>15-min Access Token"]
-        RBAC["RBAC<br/>Viewer/Analyst/Admin"]
-        ClassFilter["Classification<br/>EF Query Filters"]
-        Audit["Audit Service<br/>Two-Path Logging"]
-    end
-
-    subgraph "Trust Boundary 4: Data"
-        DB["PostgreSQL<br/>Partitioned + Filtered"]
-        Redis["Redis<br/>Internal Only"]
-    end
-
-    Client -->|"HTTPS"| Caddy
-    Caddy -->|"Bearer Token"| JWT
-    JWT --> RBAC
-    RBAC --> ClassFilter
-    ClassFilter --> DB
-    RBAC --> Audit
-```
-
 ### Tech Stack
 
 | Layer | Technology |
 |---|---|
 | Backend | .NET 9, ASP.NET Core, EF Core 9, FluentValidation |
 | Frontend | React 19, TypeScript, Vite, Tailwind CSS v4, MapLibre GL JS, shadcn/ui |
-| Database | PostgreSQL 16 + PostGIS 3.4 (spatial queries, partitioned observations table) |
+| Database | PostgreSQL 16 + PostGIS 3.4 (spatial queries, partitioned tables) |
 | Cache / Messaging | Redis 7 (pub/sub, dedup, geofence membership, SignalR backplane) |
-| Reverse Proxy | Caddy 2 (reverse proxy, automatic TLS, CSP headers) |
+| Reverse Proxy | Caddy 2 (TLS, CSP headers, WebSocket proxying) |
 | Basemap | PMTiles + Protomaps (self-hosted vector tiles, fully air-gappable) |
-
-## Features
-
-### Real-Time Maritime Tracking
-
-AIS data ingested via AISStream.io WebSocket in Live mode, or a deterministic simulator providing 12 vessels with realistic Mersey navigation patterns in Simulated mode. Vessel icons are heading-oriented SVG markers. Selecting a vessel opens an entity detail panel showing MMSI, vessel type, speed, course, last update timestamp, and classification.
-
-### Real-Time Aviation Tracking
-
-ADS-B data polled from Airplanes.live REST API (no key required) in Live mode, or an 8-aircraft simulator covering approach, departure, transit, and helicopter hover patterns over Liverpool. Aircraft icons are sky-blue plane markers. The same entity detail panel applies.
-
-### Entity Correlation Engine
-
-The correlation worker maintains a source-to-entity mapping: each AIS MMSI or ADS-B ICAO hex resolves to a canonical `Entity` record with display name, entity type, and classification. A hot-path Redis cache ensures repeated observations for the same identifier skip the database entirely. Correlation runs as a dedicated `BackgroundService` subscribing to the `observations:*` Redis channel — independent of the ingestion pipeline.
-
-### Alerting System
-
-Four alert types fire in real time:
-
-- **Geofence Breach** — PostGIS `ST_Within` spatial queries with Redis set membership diffing to detect enter/exit transitions without duplicate firing.
-- **Watchlist Match** — O(1) Redis hash lookup against a configurable watchlist, with per-entity debounce to suppress repeated alerts.
-- **AIS Dark** — Timer-based stale vessel detection. An entity is declared dark when no AIS observation has been received within the configurable timeout (default 900 s, demo 30 s).
-- **Speed Anomaly** — Type-specific thresholds: >50 kt for vessels, >600 kt for fixed-wing aircraft.
-
-All alerts are delivered via SignalR to all connected clients within the same subscription scope. The alert feed is collapsible with severity colour coding (red for geofence/watchlist, amber for speed/dark).
-
-### Classification System
-
-Three-tier mock classification: `OFFICIAL`, `OFFICIAL-SENSITIVE`, `SECRET`. EF Core global query filters on `SentinelMapDbContext` ensure every API query is automatically filtered to the authenticated user's clearance level — enforcement is at the ORM layer, not the controller layer. Background workers use a separate `SystemDbContext` with filters disabled (ADR-006). A classification banner in the UI reflects the authenticated user's clearance. All data exports include a classification watermark (ADR-005).
-
-### Security
-
-- **Authentication:** RS256 JWT with 15-minute access tokens. Refresh token rotation with SHA256 hashing and family tracking for reuse detection.
-- **Identity:** ASP.NET Core Identity with NIST 800-63B password policy. Account lockout after 5 consecutive failures.
-- **Authorisation:** RBAC with three roles (Viewer, Analyst, Admin) enforced via named ASP.NET Core authorization policies.
-- **Rate Limiting:** 10 requests/minute on auth endpoints, 100 requests/minute on API read endpoints.
-- **Audit Logging:** Two-path logging — synchronous for security events (login, token refresh, lockout), asynchronous for operational events (track queries, alert delivery).
-- **Transport:** CSP headers, CORS allowlist, Docker network isolation. Caddy terminates TLS; internal services are not exposed to the host network in production compose.
-
-For the full STRIDE analysis see [Threat Model](docs/THREAT_MODEL.md).
 
 ## Project Structure
 
 ```
 SentinelMap/
 ├── src/
-│   ├── SentinelMap.Api/            # REST API + SignalR hub + auth
+│   ├── SentinelMap.Api/            # REST API + SignalR hub + auth endpoints
 │   ├── SentinelMap.Workers/        # Background services (ingestion, correlation, alerting)
-│   ├── SentinelMap.Infrastructure/ # Data access, connectors, ingestion pipeline
-│   ├── SentinelMap.Domain/         # Entities, domain interfaces, message types
+│   ├── SentinelMap.Infrastructure/ # Data access, connectors, pipeline, correlation rules
+│   ├── SentinelMap.Domain/         # Entities, interfaces, message types
 │   └── SentinelMap.SharedKernel/   # Enums, DTOs, shared interfaces
 ├── client/                         # React frontend (Vite + TypeScript)
-├── tests/                          # xUnit test projects (73 tests across 3 projects)
+├── tests/                          # xUnit test projects (98 tests)
 ├── docs/
-│   ├── adr/                        # Architecture Decision Records (ADR-001–006)
-│   ├── THREAT_MODEL.md             # STRIDE analysis, risk matrix, mitigation mapping
-│   └── superpowers/                # Specs and milestone plans
-├── scripts/                        # Tooling (seeder, migrations, PMTiles download)
-├── docker-compose.yml              # Production-default six-service deployment
+│   └── THREAT_MODEL.md             # STRIDE analysis, risk matrix
+├── scripts/                        # PMTiles download, tooling
+├── docker-compose.yml              # Production six-service deployment
 ├── docker-compose.override.yml     # Dev overrides (exposed db/redis ports)
-└── Caddyfile                       # Reverse proxy and CSP configuration
+└── Caddyfile                       # Reverse proxy and security headers
 ```
-
-## Architecture Decision Records
-
-| ADR | Decision | Rationale |
-|---|---|---|
-| [ADR-001](docs/adr/ADR-001-pmtiles-over-osm-raster.md) | PMTiles over OSM raster tiles | Self-hosted vector tiles enable fully air-gapped deployment; no tile server process required at runtime |
-| [ADR-002](docs/adr/ADR-002-separate-correlation-worker.md) | Separate correlation worker over inline pipeline | Independent failure domains — slow correlation cannot backpressure ingestion; hot-path cache absorbs 90%+ of load |
-| [ADR-003](docs/adr/ADR-003-shadcn-over-mui.md) | shadcn/ui over MUI | Full ownership of component source enables defence-specific aesthetic without fighting a library's defaults |
-| [ADR-004](docs/adr/ADR-004-redis-backplane-for-signalr.md) | Redis backplane for SignalR | Maintains no-service-to-service-HTTP constraint; enables horizontal API scaling without coordination overhead |
-| [ADR-005](docs/adr/ADR-005-classification-watermark-exports.md) | Classification watermark on exports | Classification marking must travel with exported data, mirroring real defence data handling requirements |
-| [ADR-006](docs/adr/ADR-006-system-dbcontext-without-filters.md) | SystemDbContext without classification filters | Workers need unfiltered access; two DbContext types enforce the boundary at DI registration level, not convention |
-
-## Security
-
-See [Threat Model](docs/THREAT_MODEL.md) for the full STRIDE analysis covering 17 identified threats across 5 trust boundaries, with a risk matrix and mitigation mapping to source code locations.
 
 ## Development
 
@@ -265,8 +235,20 @@ cd client && npm install && npm run dev
 
 ```bash
 dotnet test SentinelMap.slnx
-# 73 tests across 3 projects
+# 98 tests across 3 projects
 ```
+
+### PMTiles Basemap
+
+The basemap is downloaded separately (400MB, UK+Ireland at zoom 12):
+
+```bash
+bash scripts/download-pmtiles.sh
+```
+
+## Security
+
+See [Threat Model](docs/THREAT_MODEL.md) for the full STRIDE analysis covering 17 identified threats across 5 trust boundaries, with risk matrix and mitigation mapping.
 
 ## License
 
