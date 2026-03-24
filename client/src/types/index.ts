@@ -70,6 +70,44 @@ export interface CorrelationReview {
   createdAt: string
 }
 
+export interface EntityDetail {
+  id: string
+  type: string
+  displayName: string
+  status: string
+  lastKnownPosition: { longitude: number; latitude: number } | null
+  lastSpeedKnots: number | null
+  lastHeading: number | null
+  lastSeen: string | null
+  identifiers: { type: string; value: string; source: string }[]
+  enrichment: {
+    vesselType: string | null
+    aircraftType: string | null
+    photoUrl: string | null
+    externalUrl: string | null
+    flag: string | null
+    imo: string | null
+    callsign: string | null
+    registration: string | null
+    squawk: string | null
+    altitude: number | null
+  }
+}
+
+export interface TrackPosition {
+  longitude: number
+  latitude: number
+  heading: number | null
+  speedKnots: number | null
+  observedAt: string
+}
+
+export interface TrackHistoryResponse {
+  entityId: string
+  positions: TrackPosition[]
+  totalCount: number
+}
+
 export interface MapFeatureData {
   id: string
   featureType: string
