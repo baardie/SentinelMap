@@ -9,5 +9,6 @@ public enum AlertType
     TransponderSwap = 4,
     CorrelationLink = 5,
     SafetyBroadcast = 6,
-    RouteDeviation = 7
+    RouteDeviation = 7,
+    EmergencySquawk = 8
 }

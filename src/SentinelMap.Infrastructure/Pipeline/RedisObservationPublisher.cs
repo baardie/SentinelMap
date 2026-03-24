@@ -20,6 +20,8 @@ public class RedisObservationPublisher : IObservationPublisher
         string? displayName = null;
         string? vesselType = null;
         string? aircraftType = null;
+        string? emergency = null;
+        bool isMilitary = false;
         if (!string.IsNullOrEmpty(observation.RawData))
         {
             try
@@ -29,6 +31,8 @@ public class RedisObservationPublisher : IObservationPublisher
                     ?? rawNode?["text"]?.GetValue<string>(); // safety broadcasts carry text instead of displayName
                 vesselType = rawNode?["vesselType"]?.GetValue<string>();
                 aircraftType = rawNode?["aircraftType"]?.GetValue<string>();
+                emergency = rawNode?["emergency"]?.GetValue<string>();
+                isMilitary = rawNode?["military"]?.GetValue<bool>() ?? false;
             }
             catch { }
         }
@@ -44,7 +48,9 @@ public class RedisObservationPublisher : IObservationPublisher
             SpeedMps: observation.SpeedMps,
             DisplayName: displayName,
             VesselType: vesselType,
-            AircraftType: aircraftType);
+            AircraftType: aircraftType,
+            Emergency: emergency,
+            IsMilitary: isMilitary);
 
         var json = JsonSerializer.Serialize(message);
         var channel = RedisChannel.Literal($"observations:{observation.SourceType}");

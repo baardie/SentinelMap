@@ -324,6 +324,23 @@ export function EntityDetailPanel({ entity, onClose, onCreateGeofence, onToggleT
           </>
         )}
 
+        {/* Emergency / Military / Vertical Rate from live track data */}
+        {entity.entityType === 'Aircraft' && entity.emergency && entity.emergency !== 'none' && (
+          <div className="flex justify-between py-1">
+            <span className="text-slate-400">Emergency</span>
+            <span className="text-red-400 font-mono text-xs font-semibold uppercase animate-pulse">
+              {entity.emergency}
+            </span>
+          </div>
+        )}
+
+        {entity.entityType === 'Aircraft' && entity.isMilitary && (
+          <div className="flex justify-between py-1">
+            <span className="text-slate-400">Classification</span>
+            <span className="text-orange-400 font-mono text-xs font-semibold uppercase">MILITARY</span>
+          </div>
+        )}
+
         {/* Identifiers */}
         {identifiers && identifiers.length > 0 && (
           <>

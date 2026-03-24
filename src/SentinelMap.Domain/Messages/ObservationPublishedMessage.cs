@@ -15,4 +15,6 @@ public record ObservationPublishedMessage(
     double? SpeedMps,
     string? DisplayName = null,
     string? VesselType = null,
-    string? AircraftType = null);
+    string? AircraftType = null,
+    string? Emergency = null,
+    bool IsMilitary = false);

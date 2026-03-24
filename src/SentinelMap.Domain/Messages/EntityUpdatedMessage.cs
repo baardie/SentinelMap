@@ -15,4 +15,6 @@ public record EntityUpdatedMessage(
     DateTimeOffset Timestamp,
     string? DisplayName = null,
     string? VesselType = null,
-    string? AircraftType = null);
+    string? AircraftType = null,
+    string? Emergency = null,
+    bool IsMilitary = false);

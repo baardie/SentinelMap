@@ -57,13 +57,38 @@ export function AviationTrackLayer({ map, tracks }: AviationTrackLayerProps) {
         'text-optional': true,
       },
       paint: {
-        'icon-color': '#0ea5e9',
+        'icon-color': [
+          'case',
+          // Emergency aircraft — red
+          ['all',
+            ['has', 'emergency'],
+            ['!=', ['get', 'emergency'], 'none'],
+            ['!=', ['get', 'emergency'], ''],
+          ],
+          '#ef4444',
+          // Military aircraft — orange
+          ['==', ['get', 'isMilitary'], true],
+          '#f97316',
+          // Default — sky blue
+          '#0ea5e9',
+        ],
         'icon-opacity': [
           'case',
           ['==', ['get', 'status'], 'Dark'], 0.3,
           ['interpolate', ['linear'], ['get', 'staleness'], 0, 1.0, 1, 0.3],
         ],
-        'text-color': '#0ea5e9',
+        'text-color': [
+          'case',
+          ['all',
+            ['has', 'emergency'],
+            ['!=', ['get', 'emergency'], 'none'],
+            ['!=', ['get', 'emergency'], ''],
+          ],
+          '#ef4444',
+          ['==', ['get', 'isMilitary'], true],
+          '#f97316',
+          '#0ea5e9',
+        ],
         'text-halo-color': '#0f172a',
         'text-halo-width': 1,
       },

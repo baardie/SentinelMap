@@ -22,6 +22,8 @@ function trackUpdateToFeature(update: TrackUpdate): TrackFeature {
       displayName: update.displayName ?? '',
       lastUpdated: update.timestamp,
       staleness: 0,
+      emergency: update.emergency ?? null,
+      isMilitary: update.isMilitary ?? false,
     } satisfies TrackProperties,
   }
 }

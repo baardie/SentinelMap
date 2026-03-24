@@ -47,6 +47,8 @@ public class TrackHubService : BackgroundService
                 displayName = evt.DisplayName,
                 vesselType = evt.VesselType,
                 aircraftType = evt.AircraftType,
+                emergency = evt.Emergency,
+                isMilitary = evt.IsMilitary,
             };
 
             try

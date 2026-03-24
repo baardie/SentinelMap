@@ -15,6 +15,7 @@ const ALERT_TYPES = [
   'CorrelationLink',
   'RouteDeviation',
   'SafetyBroadcast',
+  'EmergencySquawk',
 ] as const
 
 const SEVERITY_LEVELS = ['Critical', 'High', 'Medium', 'Low'] as const
@@ -57,6 +58,7 @@ function shortType(type: string): string {
     .replace('CorrelationLink', 'CORRELATION')
     .replace('RouteDeviation', 'DEVIATION')
     .replace('SafetyBroadcast', 'SAFETY')
+    .replace('EmergencySquawk', 'EMERGENCY')
 }
 
 export function AlertFeed({ alerts, onAlertClick }: AlertFeedProps) {

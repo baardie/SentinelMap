@@ -67,9 +67,12 @@ public class CorrelationProcessor
 
             _logger.LogDebug("Hot-path hit for {Source}:{ExternalId} → entity {EntityId}", msg.SourceType, msg.ExternalId, entityId);
 
+            // Check for emergency squawk
+            await CheckEmergencyAsync(msg, entityId, ct);
+
             return new EntityUpdatedMessage(entityId, msg.Longitude, msg.Latitude, msg.Heading, msg.SpeedMps,
                 entityType.ToString(), EntityStatus.Active.ToString(), msg.ObservedAt, msg.DisplayName,
-                msg.VesselType, msg.AircraftType);
+                msg.VesselType, msg.AircraftType, msg.Emergency, msg.IsMilitary);
         }
 
         // Cold path: check for existing entity match via correlation rules
@@ -169,9 +172,11 @@ public class CorrelationProcessor
                 "Correlated {Source}:{ExternalId} → entity {EntityId} via {Rule} (confidence {Confidence:F2})",
                 msg.SourceType, msg.ExternalId, matchedEntity.Id, bestRuleId, bestConfidence);
 
+            await CheckEmergencyAsync(msg, matchedEntity.Id, ct);
+
             return new EntityUpdatedMessage(matchedEntity.Id, msg.Longitude, msg.Latitude, msg.Heading, msg.SpeedMps,
                 entityType.ToString(), EntityStatus.Active.ToString(), msg.ObservedAt, msg.DisplayName,
-                msg.VesselType, msg.AircraftType);
+                msg.VesselType, msg.AircraftType, msg.Emergency, msg.IsMilitary);
         }
 
         if (matchedEntity != null && bestConfidence >= ReviewThreshold && _systemDb != null)
@@ -215,9 +220,11 @@ public class CorrelationProcessor
                 "Created review {ReviewId} for potential correlation: {Source}:{ExternalId} → entity {EntityId} (confidence {Confidence:F2})",
                 review.Id, msg.SourceType, msg.ExternalId, matchedEntity.Id, bestConfidence);
 
+            await CheckEmergencyAsync(msg, newEntity.Id, ct);
+
             return new EntityUpdatedMessage(newEntity.Id, msg.Longitude, msg.Latitude, msg.Heading, msg.SpeedMps,
                 entityType.ToString(), EntityStatus.Active.ToString(), msg.ObservedAt, msg.DisplayName,
-                msg.VesselType, msg.AircraftType);
+                msg.VesselType, msg.AircraftType, msg.Emergency, msg.IsMilitary);
         }
 
         // No match found — create new entity
@@ -252,9 +259,65 @@ public class CorrelationProcessor
 
         _logger.LogInformation("Created entity {EntityId} for {Source}:{ExternalId}", entity.Id, msg.SourceType, msg.ExternalId);
 
+        await CheckEmergencyAsync(msg, entity.Id, ct);
+
         return new EntityUpdatedMessage(entity.Id, msg.Longitude, msg.Latitude, msg.Heading, msg.SpeedMps,
             entityType.ToString(), EntityStatus.Active.ToString(), msg.ObservedAt, msg.DisplayName,
-            msg.VesselType, msg.AircraftType);
+            msg.VesselType, msg.AircraftType, msg.Emergency, msg.IsMilitary);
+    }
+
+    /// <summary>
+    /// Creates an EmergencySquawk alert if the observation carries a non-"none" emergency status.
+    /// Uses a Redis debounce key to avoid duplicate alerts for the same aircraft.
+    /// </summary>
+    private async Task CheckEmergencyAsync(ObservationPublishedMessage msg, Guid entityId, CancellationToken ct)
+    {
+        if (msg.SourceType != "ADSB") return;
+        if (string.IsNullOrEmpty(msg.Emergency) || string.Equals(msg.Emergency, "none", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        // Debounce: one alert per aircraft per 10 minutes
+        var debounceKey = $"alert:emergency:debounce:{msg.ExternalId}";
+        var alreadyAlerted = await _db.KeyExistsAsync(debounceKey);
+        if (alreadyAlerted) return;
+
+        await _db.StringSetAsync(debounceKey, "1", TimeSpan.FromMinutes(10));
+
+        var alert = new Alert
+        {
+            Type = AlertType.EmergencySquawk,
+            Severity = AlertSeverity.Critical,
+            EntityId = entityId,
+            Summary = $"Aircraft {msg.DisplayName ?? msg.ExternalId} emergency: {msg.Emergency}",
+            Details = JsonSerializer.Serialize(new
+            {
+                message = $"Emergency squawk detected for aircraft {msg.DisplayName ?? msg.ExternalId} (ICAO: {msg.ExternalId})",
+                emergency = msg.Emergency,
+                externalId = msg.ExternalId,
+                latitude = msg.Latitude,
+                longitude = msg.Longitude,
+            }),
+            Status = AlertStatus.Triggered,
+            CreatedAt = DateTimeOffset.UtcNow,
+        };
+
+        await _alertRepo.AddAsync(alert, ct);
+
+        var alertMsg = new AlertTriggeredMessage(
+            AlertId: alert.Id,
+            Type: alert.Type.ToString(),
+            Severity: alert.Severity.ToString(),
+            EntityId: alert.EntityId,
+            Summary: alert.Summary,
+            CreatedAt: alert.CreatedAt);
+
+        await _db.Multiplexer.GetSubscriber().PublishAsync(
+            RedisChannel.Literal("alerts:triggered"),
+            JsonSerializer.Serialize(alertMsg));
+
+        _logger.LogWarning(
+            "EmergencySquawk alert {AlertId} for entity {EntityId} ({DisplayName}): {Emergency}",
+            alert.Id, entityId, msg.DisplayName ?? msg.ExternalId, msg.Emergency);
     }
 
     private async Task LinkObservationToEntityAsync(long observationId, Guid entityId, DateTimeOffset observedAt, CancellationToken ct)

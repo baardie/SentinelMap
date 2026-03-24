@@ -125,6 +125,21 @@ public class AdsbLiveConnector : ISourceConnector
             var aircraftType = node["t"]?.GetValue<string>();
             var registration = node["r"]?.GetValue<string>();
             var squawk = node["squawk"]?.GetValue<string>();
+            var emergency = node["emergency"]?.GetValue<string>();
+            var category = node["category"]?.GetValue<string>();
+
+            // dbFlags: bit 1 = military, bit 2 = interesting, bit 4 = PIA, bit 8 = LADD
+            var dbFlagsNode = node["dbFlags"];
+            int dbFlags = 0;
+            if (dbFlagsNode is not null)
+                dbFlags = dbFlagsNode.GetValue<int>();
+            var isMilitary = (dbFlags & 1) != 0;
+
+            // baro_rate — vertical rate in ft/min
+            double? verticalRate = null;
+            var baroRateNode = node["baro_rate"];
+            if (baroRateNode is not null)
+                verticalRate = baroRateNode.GetValue<double>();
 
             // alt_baro can be an integer or the string "ground"
             int altitude = 0;
@@ -154,6 +169,20 @@ public class AdsbLiveConnector : ISourceConnector
             if (trackNode is not null)
                 heading = trackNode.GetValue<double>();
 
+            // Detect emergency status: explicit emergency field or emergency squawk codes
+            var isEmergency = !string.IsNullOrEmpty(emergency) && !string.Equals(emergency, "none", StringComparison.OrdinalIgnoreCase);
+            if (!isEmergency && (squawk == "7500" || squawk == "7600" || squawk == "7700"))
+            {
+                isEmergency = true;
+                emergency = squawk switch
+                {
+                    "7500" => "unlawful",   // hijack
+                    "7600" => "nordo",       // radio failure
+                    "7700" => "general",     // general emergency
+                    _ => emergency,
+                };
+            }
+
             return new Observation
             {
                 SourceType = "ADSB",
@@ -169,6 +198,10 @@ public class AdsbLiveConnector : ISourceConnector
                     altitude,
                     registration,
                     squawk,
+                    verticalRate,
+                    emergency = emergency ?? "none",
+                    military = isMilitary,
+                    category,
                 }),
             };
         }

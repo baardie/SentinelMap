@@ -44,7 +44,7 @@ export type TrackFeature = Feature<Point, TrackProperties>
 
 export interface AlertNotification {
   alertId: string
-  type: 'GeofenceBreach' | 'WatchlistMatch' | 'AisDark' | 'SpeedAnomaly' | 'TransponderSwap' | 'CorrelationLink'
+  type: 'GeofenceBreach' | 'WatchlistMatch' | 'AisDark' | 'SpeedAnomaly' | 'TransponderSwap' | 'CorrelationLink' | 'EmergencySquawk' | 'RouteDeviation' | 'SafetyBroadcast'
   severity: 'Low' | 'Medium' | 'High' | 'Critical'
   entityId: string | null
   summary: string
